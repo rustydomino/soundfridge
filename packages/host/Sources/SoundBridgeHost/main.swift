@@ -72,18 +72,21 @@ func main() {
     logger.info("Signal handlers installed")
 
     print("[Step 1] Discovering physical audio devices...")
-
     let devices = deviceDiscovery.enumeratePhysicalDevices()
 
+    // An empty initial device set means the Host has completed startup
+    // directly into its idle state. A non-empty set remains in .starting
+    // until the AudioEngine has been successfully initialized.
     if devices.isEmpty {
         logger.info("No managed audio devices currently available; entering idle mode")
-
         deviceMonitor.setHostState(.idle)
+    }
 
-        print("[Step 2] Registering device change listeners...")
-        deviceMonitor.registerListeners()
-        setupDeviceRegistryChangeListener()
+    print("[Step 2] Registering device change listeners...")
+    deviceMonitor.registerListeners()
+    setupDeviceRegistryChangeListener()
 
+    if devices.isEmpty {
         RunLoop.current.run()
         return
     }
@@ -112,11 +115,6 @@ func main() {
     print("[Step 1.5] HiFi mode: \(deviceSampleRate) Hz (from \(preferredDevice.name))")
 
     deviceRegistry.update(devices)
-
-    print("[Step 2] Registering device change listeners...")
-    deviceMonitor.registerListeners()
-
-    setupDeviceRegistryChangeListener()
 
     print("[Step 3] Creating shared memory files...")
     memoryManager.createMemory(for: devices)
