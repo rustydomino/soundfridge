@@ -42,6 +42,8 @@ let sleepWakeMonitor = SleepWakeMonitor()
 // Otherwise they are released after setupSignalHandlers() returns.
 private var signalSources: [DispatchSourceSignal] = []
 
+private var deviceRegistryChangedToken: Int32 = 0
+
 func main() {
 
     // Prevent macOS App Nap from throttling this process.
@@ -68,8 +70,11 @@ func main() {
     if devices.isEmpty {
         logger.info("No managed audio devices currently available; entering idle mode")
 
+        deviceMonitor.setHostState(.idle)
+
         print("[Step 2] Registering device change listeners...")
         deviceMonitor.registerListeners()
+        setupDeviceRegistryChangeListener()
 
         setupSignalHandlers()
         logger.info("Signal handlers installed")
@@ -105,6 +110,8 @@ func main() {
 
     print("[Step 2] Registering device change listeners...")
     deviceMonitor.registerListeners()
+
+    setupDeviceRegistryChangeListener()
 
     print("[Step 3] Creating shared memory files...")
     memoryManager.createMemory(for: devices)
@@ -170,6 +177,7 @@ func main() {
         try audioEngine.setup(devices: devices, preferredDeviceID: preferredDeviceID != 0 ? preferredDeviceID : nil)
         try audioEngine.start()
         logger.info("Audio engine started successfully")
+        deviceMonitor.setHostState(.active)
 
         // Post-start volume sync: After IO starts, the driver maps shared memory.
         // Re-apply the current proxy volume so the driver writes it into shared memory.
@@ -242,7 +250,32 @@ func setupSignalHandlers() {
     signal(SIGTERM, SIG_IGN)
 }
 
+func setupDeviceRegistryChangeListener() {
+    let status = _notify_register_dispatch(
+        "com.soundbridge.device-registry-changed",
+        &deviceRegistryChangedToken,
+        DispatchQueue.main
+    ) { _ in
+        print("[DeviceRegistry] Configuration changed; reconciling devices...")
+        deviceMonitor.reconcileDevices()
+    }
+
+    if status != 0 {
+        logger.error(
+            "Failed to register device registry notification listener (status: \(status))"
+        )
+    }
+}
+
 func cleanup() {
+
+    deviceMonitor.setHostState(.stopping)
+
+    if deviceRegistryChangedToken != 0 {
+        _ = _notify_cancel(deviceRegistryChangedToken)
+        deviceRegistryChangedToken = 0
+    }
+
     print("\n[Cleanup] Starting cleanup process...")
 
     sleepWakeMonitor.stop()

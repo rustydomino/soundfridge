@@ -4,6 +4,13 @@ import os.log
 
 private let logger = Logger(subsystem: "com.soundbridge.host", category: "DeviceMonitor")
 
+enum HostState: String {
+    case starting
+    case idle
+    case active
+    case stopping
+}
+
 class DeviceMonitor {
     private let registry: DeviceRegistry
     private let proxyManager: ProxyDeviceManager
@@ -16,7 +23,7 @@ class DeviceMonitor {
     private var listenersRegistered = false
     private var devicesListenerRegistered = false
     private var defaultOutputListenerRegistered = false
-
+    private var hostState: HostState = .starting
     init(
         registry: DeviceRegistry,
         proxyManager: ProxyDeviceManager,
@@ -29,6 +36,13 @@ class DeviceMonitor {
         self.memoryManager = memoryManager
         self.discovery = discovery
         self.audioEngine = audioEngine
+    }
+
+    func setHostState(_ newState: HostState) {
+        guard hostState != newState else { return }
+
+        print("[HostState] \(hostState.rawValue) -> \(newState.rawValue)")
+        hostState = newState
     }
 
     func registerListeners() {
@@ -125,7 +139,7 @@ class DeviceMonitor {
         lastHandledTime = .distantPast
     }
 
-    fileprivate func handleDeviceListChanged() {
+    func reconcileDevices() {
         let oldDevices = registry.devices
         let newDevices = discovery.enumeratePhysicalDevices()
 
@@ -136,7 +150,8 @@ class DeviceMonitor {
             !newDevices.contains { $0.uid == old.uid }
         }
 
-        let startingFromIdle = !audioEngine.isInitialized && !newDevices.isEmpty
+        let startingFromIdle = hostState == .idle && !newDevices.isEmpty
+        let enteringIdle = hostState == .active && newDevices.isEmpty
 
         if startingFromIdle {
             let preferredDevice =
@@ -161,6 +176,12 @@ class DeviceMonitor {
 
         // 2. Update registry (writes control file + sends Darwin notification)
         registry.update(newDevices)
+        if enteringIdle {
+            print("[DeviceMonitor] No managed devices remain; entering idle mode")
+            audioEngine.stop()
+            memoryManager.stopHeartbeat()
+            setHostState(.idle)
+        }
 
         if startingFromIdle {
             memoryManager.startHeartbeat()
@@ -175,6 +196,8 @@ class DeviceMonitor {
                     preferredDeviceID: preferredDevice.id
                 )
                 try audioEngine.start()
+
+                setHostState(.active)
 
                 logger.info("Audio engine started after leaving idle mode")
             } catch {
@@ -346,8 +369,15 @@ private func deviceListChangedCallbackC(
     _ clientData: UnsafeMutableRawPointer?
 ) -> OSStatus {
     guard let clientData else { return noErr }
-    Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
-        .handleDeviceListChanged()
+
+    let monitor = Unmanaged<DeviceMonitor>
+        .fromOpaque(clientData)
+        .takeUnretainedValue()
+
+    DispatchQueue.main.async {
+        monitor.reconcileDevices()
+    }
+
     return noErr
 }
 
@@ -358,7 +388,14 @@ private func defaultOutputChangedCallbackC(
     _ clientData: UnsafeMutableRawPointer?
 ) -> OSStatus {
     guard let clientData else { return noErr }
-    Unmanaged<DeviceMonitor>.fromOpaque(clientData).takeUnretainedValue()
-        .handleDefaultOutputChanged()
+
+    let monitor = Unmanaged<DeviceMonitor>
+        .fromOpaque(clientData)
+        .takeUnretainedValue()
+
+    DispatchQueue.main.async {
+        monitor.handleDefaultOutputChanged()
+    }
+
     return noErr
 }
