@@ -320,24 +320,7 @@ func cleanup() {
 
     memoryManager.cleanup()
 
-    restartCoreAudio()
-
     logger.info("Cleanup complete")
-}
-
-private func restartCoreAudio() {
-    // Force HAL to drop any lingering virtual devices by restarting coreaudiod
-    let task = Process()
-    task.launchPath = "/usr/bin/killall"
-    task.arguments = ["coreaudiod"]  // 默认发送 SIGTERM
-
-    do {
-        try task.run()
-        task.waitUntilExit()
-        logger.info("Restarted coreaudiod (status \(task.terminationStatus))")
-    } catch {
-        logger.error("Failed to restart coreaudiod: \(error.localizedDescription)")
-    }
 }
 
 main()
