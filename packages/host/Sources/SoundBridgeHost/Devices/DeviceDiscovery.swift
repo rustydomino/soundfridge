@@ -111,15 +111,23 @@ class DeviceDiscovery {
                 print("[DeviceEnum]   Validation note: \(reason)")
             }
 
+            // Check if device supports hardware volume control
+            let fixedVolume = !deviceHasVolumeControl(deviceID)
+            print("[DeviceEnum]   Volume control: \(fixedVolume ? "Fixed (no hardware volume)" : "Adjustable (hardware volume supported)")")
+
+            // Original prompt: Filter out devices that already have writable Core Audio volume control.
+            // Date: 2026-08-08
+            // Test by running packages/host/start_host.sh and checking accepted devices.
+            if !fixedVolume {
+                print("[DeviceEnum] ✗ SKIP: Writable Core Audio volume control already available")
+                continue
+            }
+
             if validation.valid {
                 print("[DeviceEnum] ✓ ACCEPTED: Adding to device list")
             } else {
                 logger.warning("ACCEPTED WITH WARNING: Device may not work properly")
             }
-
-            // Check if device supports hardware volume control
-            let fixedVolume = !deviceHasVolumeControl(deviceID)
-            print("[DeviceEnum]   Volume control: \(fixedVolume ? "Fixed (no hardware volume)" : "Adjustable (hardware volume supported)")")
 
             devices.append(PhysicalDevice(
                 id: deviceID,
