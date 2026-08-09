@@ -1,6 +1,11 @@
-import Foundation
 import CoreAudio
+import Foundation
 import os.log
+
+/// Darwin notification used to tell the configuration app that a new
+/// eligible device has been recorded and needs a user decision.
+@_silgen_name("notify_post")
+private func _notify_post(_ name: UnsafePointer<CChar>) -> UInt32
 
 private let logger = Logger(subsystem: "com.soundbridge.host", category: "DeviceDiscovery")
 
@@ -13,15 +18,13 @@ struct PhysicalDevice {
     let isOutput: Bool
     let validationPassed: Bool
     let validationNote: String?
-    let isFixedVolume: Bool  // true = no hardware volume control
+    let isFixedVolume: Bool // true = no hardware volume control
 }
 
 class DeviceDiscovery {
-
     private let deviceRegistryStore = DeviceRegistryStore()
 
     func enumeratePhysicalDevices() -> [PhysicalDevice] {
-
         var devices: [PhysicalDevice] = []
 
         guard var knownDevices = deviceRegistryStore.loadDevices() else {
@@ -100,7 +103,8 @@ class DeviceDiscovery {
             print("[DeviceEnum]   Transport: \(transportName) (0x\(String(transportType, radix: 16)))")
 
             if transportType == kAudioDeviceTransportTypeVirtual ||
-               transportType == kAudioDeviceTransportTypeAggregate {
+                transportType == kAudioDeviceTransportTypeAggregate
+            {
                 print("[DeviceEnum] ✗ SKIP: Virtual or aggregate device")
                 continue
             }
@@ -154,6 +158,18 @@ class DeviceDiscovery {
                 do {
                     try deviceRegistryStore.saveDevices(knownDevices)
                     print("[DeviceEnum] NEW: Recorded device as pending: \(name)")
+
+                    let notificationStatus = _notify_post(
+                        "com.soundbridge.pending-device"
+                    )
+
+                    if notificationStatus == 0 {
+                        print("[DeviceEnum] NEW: Posted pending-device notification")
+                    } else {
+                        logger.error(
+                            "Failed to post pending-device notification (status: \(notificationStatus))"
+                        )
+                    }
                 } catch {
                     print("[DeviceEnum] ✗ Failed to save new device to registry: \(error)")
                 }
@@ -215,7 +231,7 @@ class DeviceDiscovery {
                 UInt8((type >> 24) & 0xFF),
                 UInt8((type >> 16) & 0xFF),
                 UInt8((type >> 8) & 0xFF),
-                UInt8(type & 0xFF)
+                UInt8(type & 0xFF),
             ]
             let ascii = String(bytes: chars, encoding: .ascii) ?? ""
             return "Unknown ('\(ascii)')"
@@ -371,7 +387,8 @@ class DeviceDiscovery {
     private func isDeviceJackConnected(_ deviceID: AudioDeviceID, transportType: UInt32) -> Bool {
         // Only check jack status for display-based connections
         guard transportType == kAudioDeviceTransportTypeDisplayPort ||
-              transportType == kAudioDeviceTransportTypeHDMI else {
+            transportType == kAudioDeviceTransportTypeHDMI
+        else {
             return true // Non-display devices don't need jack check
         }
 
@@ -429,7 +446,8 @@ class DeviceDiscovery {
         for format in formats {
             // Accept if format supports stereo or more channels and reasonable sample rate
             if format.mChannelsPerFrame >= 2 &&
-               format.mSampleRate >= 44100 && format.mSampleRate <= 192000 {
+                format.mSampleRate >= 44100 && format.mSampleRate <= 192_000
+            {
                 return true
             }
         }
@@ -453,7 +471,7 @@ class DeviceDiscovery {
         }
 
         // Accept reasonable sample rates
-        return sampleRate >= 44100 && sampleRate <= 192000
+        return sampleRate >= 44100 && sampleRate <= 192_000
     }
 
     /// Get the nominal sample rate of a device, snapped to nearest standard rate
@@ -471,7 +489,7 @@ class DeviceDiscovery {
         }
 
         // Snap to nearest standard rate
-        let supported: [UInt32] = [44100, 48000, 88200, 96000, 176400, 192000]
+        let supported: [UInt32] = [44100, 48000, 88200, 96000, 176_400, 192_000]
         let rate = UInt32(sampleRate)
         return supported.min(by: { abs(Int($0) - Int(rate)) < abs(Int($1) - Int(rate)) }) ?? 48000
     }
