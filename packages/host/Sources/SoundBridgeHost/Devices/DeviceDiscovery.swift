@@ -17,8 +17,15 @@ struct PhysicalDevice {
 }
 
 class DeviceDiscovery {
+
+    private let managedDeviceStore = ManagedDeviceStore()
+
     func enumeratePhysicalDevices() -> [PhysicalDevice] {
+
         var devices: [PhysicalDevice] = []
+
+        // Load the current managed-device selection for this enumeration pass.
+        let managedDeviceUIDs = managedDeviceStore.loadSelectedUIDs()
 
         print("[DeviceEnum] ===== ENUMERATING AUDIO DEVICES =====")
 
@@ -120,6 +127,12 @@ class DeviceDiscovery {
             // Test by running packages/host/start_host.sh and checking accepted devices.
             if !fixedVolume {
                 print("[DeviceEnum] ✗ SKIP: Writable Core Audio volume control already available")
+                continue
+            }
+
+            if let selectedUIDs = managedDeviceUIDs,
+            !selectedUIDs.contains(uid) {
+                print("[DeviceEnum] ✗ SKIP: Device not selected for management")
                 continue
             }
 
