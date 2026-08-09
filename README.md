@@ -1,261 +1,412 @@
-<p align="center">
-  <img src="app.png" alt="SoundBridge" width="600">
-</p>
+# Soundfridge
 
-<h1 align="center">SoundBridge</h1>
+> **Early-stage project:** Soundfridge is under active development and is not yet ready for general use.
 
-<p align="center">
-  A free, open-source macOS system-wide volume controller for HDMI and DisplayPort monitors.
-</p>
+Soundfridge is a macOS audio utility for output devices that macOS cannot control with its normal system volume controls, especially fixed-volume HDMI and DisplayPort audio devices.
 
-<p align="center">
-  <a href="https://github.com/chenjy16/SoundBridge/releases">Download</a> · 
-  <a href="#how-it-works">How It Works</a> · 
-  <a href="#building-from-source">Build</a>
-</p>
+The goal is deliberately simple:
+
+**Make a fixed-volume output behave like a normal macOS audio device, with volume and mute controlled from the keyboard, Control Center, and the standard Sound interface.**
+
+Soundfridge is derived from [SoundBridge](https://github.com/chenjy16/SoundBridge) by chenjy16. SoundBridge provided the virtual Core Audio driver, host audio engine, shared-memory transport, device-management code, and much of the foundation that made this project possible.
+
+Soundfridge is now taking a different product and architectural direction. It should be considered its own project rather than a rebranding of SoundBridge.
 
 ---
 
-## Why SoundBridge?
+## Project status
 
-Many external monitors connected via HDMI or DisplayPort have fixed-volume audio output — macOS shows the volume slider grayed out. SoundBridge solves this by inserting a virtual audio driver between your apps and the physical device, giving you full software volume control through the menu bar.
+Soundfridge is currently in **early development**.
 
-No kernel extensions. No background daemons you can't see. Just a lightweight menu bar app.
+The backend is functional enough to prove the core concept, but installation, configuration, packaging, UI, and long-term service management are still being redesigned.
 
-## Features
+At this stage, the project is intended primarily for development and testing.
 
-- System-wide volume control for fixed-volume HDMI/DisplayPort audio
-- Menu bar app with volume slider and mute toggle
-- Keyboard volume keys work as expected
-- 10-band parametric EQ with preset support
-- Automatic device detection and hot-plug support
-- Universal binary (Apple Silicon + Intel)
-- Guided onboarding with one-click driver install
-- Auto-update via Sparkle
-- Code signed and notarized
+### Working today
 
-## Requirements
+- Core Audio HAL virtual proxy devices
+- Audio forwarding from a virtual device to physical hardware
+- Standard macOS volume and mute controls on the proxy device
+- Detection of physical output devices
+- Detection of whether Core Audio already provides writable volume control
+- Filtering of devices that do not need Soundfridge
+- Persistent device decisions (`pending`, `managed`, `ignored`)
+- Hot-plug handling
+- A persistent Host process that can remain idle when no managed device is connected
+- Runtime transitions between idle and active states
+- Sleep/wake recovery
+- Immediate configuration reconciliation without restarting the Host
 
-- macOS 13.0+ (Ventura) or later
-- HDMI or DisplayPort audio output
+### Still in development
 
-## Installation
+- A minimal configuration application
+- First-run device selection
+- Driver/Host installation and lifecycle management
+- Reliable launch-at-login/background-service installation
+- Packaging, signing, notarization, updates, and uninstall
+- User-facing documentation and release process
 
-1. Download the latest `.dmg` from [Releases](https://github.com/chenjy16/SoundBridge/releases)
-2. Drag `SoundBridge.app` to Applications
-3. Launch SoundBridge — the onboarding wizard will guide you through driver installation
-4. Your HDMI/DisplayPort audio device will appear with a working volume slider
+---
 
-To uninstall, use the "Uninstall" option in the SoundBridge menu bar dropdown.
+## Why Soundfridge?
 
-## How It Works
+Some HDMI and DisplayPort audio outputs appear normally in macOS but expose no writable system volume control. When one of these devices is selected, the macOS volume slider may be disabled and the keyboard volume keys may do nothing.
 
-SoundBridge uses a four-component architecture:
+Soundfridge places a virtual Core Audio output device in front of that physical device.
 
+Applications send audio to the virtual device. Soundfridge then forwards that audio to the real hardware while applying software volume control.
+
+From the user's perspective, the desired result is simply:
+
+```text
+Keyboard volume keys
+        │
+Control Center volume
+        │
+System Settings → Sound
+        │
+        ▼
+Soundfridge virtual device
+        │
+        ▼
+Fixed-volume physical output
 ```
-┌─────────────────┐     ┌──────────────────────┐     shared memory     ┌─────────────────┐     ┌─────────────────┐
-│   Menu Bar App   │────▶│   HAL Virtual Driver  │◀──────────────────▶│   Host Engine    │────▶│  Physical Device │
-│   (SwiftUI)      │     │   (C++ CoreAudio)     │    /tmp/soundbridge  │   (Swift)        │     │  (HDMI/DP)       │
-└─────────────────┘     └──────────────────────┘                      └─────────────────┘     └─────────────────┘
-       UI controls              Proxy device                            DSP + rendering
-       volume/mute              captures audio                          gain + EQ
+
+The virtual device exists so macOS can treat the output like a normal volume-controllable audio device.
+
+---
+
+## Design philosophy
+
+Soundfridge is intentionally moving away from the original SoundBridge user experience.
+
+### Use macOS controls, not another volume UI
+
+The primary interface for volume should be the interface macOS already provides:
+
+- keyboard volume keys
+- Control Center
+- System Settings
+- normal Core Audio APIs used by applications
+
+Soundfridge does **not** aim to provide a second permanent volume slider in a menu bar application.
+
+If the virtual device is doing its job, the user should rarely need to think about Soundfridge at all.
+
+### A background service is intentional
+
+SoundBridge explicitly emphasized having no invisible background daemon. Soundfridge makes a different tradeoff.
+
+For Soundfridge, a persistent background Host is desirable because audio-device management is infrastructure, not an interactive application task.
+
+The Host needs to remain available so it can:
+
+- notice devices being connected or disconnected
+- create and remove proxy mappings
+- transition between idle and active operation
+- recover after sleep and wake
+- react immediately to configuration changes
+- provide audio forwarding whenever a managed device is selected
+
+The long-term goal is therefore:
+
+```text
+Soundfridge.app
+    Configuration / setup only
+    Not a permanent menu bar volume controller
+            │
+            │ configuration
+            ▼
+Soundfridge Host
+    Persistent background service
+            │
+            ▼
+Soundfridge HAL Driver
+    Virtual Core Audio devices
+            │
+            ▼
+Physical audio hardware
 ```
 
-### Components
+The configuration app should be something the user opens when configuration is needed, not something that must remain visible for volume control to work.
 
-| Component | Language | Location | Role |
-|-----------|----------|----------|------|
-| App | Swift / SwiftUI | `apps/mac/SoundBridgeApp/` | Menu bar UI, onboarding, driver installer, volume control via CoreAudio API |
-| Driver | C++ | `packages/driver/` | HAL plugin that creates virtual proxy devices, captures audio into shared memory ring buffers |
-| Host | Swift | `packages/host/` | Background process that reads from shared memory, applies gain/DSP, renders to physical hardware |
-| DSP | C/C++ | `packages/dsp/` | 10-band parametric EQ engine with C ABI, used by Host via Objective-C++ bridge |
+### Keep the product small
 
-### Audio Chain
+Soundfridge is not intended to become a general-purpose audio mixer.
 
-1. macOS routes audio to the SoundBridge proxy device (appears as "Device via SoundBridge")
-2. The HAL driver writes audio frames into a shared memory ring buffer (`/tmp/soundbridge-<uid>`)
-3. The Host process reads from the ring buffer, applies software gain (from the volume slider) and optional EQ
-4. Processed audio is rendered to the real physical output device
+Current priorities are:
 
-Volume control uses CoreAudio's `kAudioDevicePropertyVolumeScalar` on the proxy device. The driver stores the value in shared memory, and the Host applies it as a linear gain multiplier with smoothing to avoid clicks.
+1. detect outputs that actually need software volume control
+2. let the user choose which of those outputs Soundfridge should manage
+3. make those devices work naturally with macOS volume controls
+4. stay reliable across reconnects, sleep/wake, and login
+5. keep configuration and maintenance simple
 
-## Project Structure
+Features that do not support that core goal should earn their complexity.
 
+---
+
+## Device management
+
+Soundfridge distinguishes between devices that macOS can already control and devices that may need a proxy.
+
+For each physical output, the Host examines Core Audio capabilities.
+
+If the device already exposes writable output volume control, Soundfridge leaves it alone.
+
+If it does not, the device may become a Soundfridge candidate.
+
+Known candidate devices are currently recorded with one of three decisions:
+
+```text
+pending   User has not chosen yet
+managed   Soundfridge should provide a proxy
+ignored   Soundfridge should leave it alone
 ```
-SoundBridge/
-├── apps/mac/SoundBridgeApp/    # SwiftUI menu bar application
-│   └── Sources/
-│       ├── App/                # App entry point, lifecycle
-│       ├── Views/              # MenuBarView, SettingsWindow, Onboarding
-│       ├── Services/           # VolumeController, IPCController, DriverInstaller
-│       └── Resources/          # Icons, fonts, images
+
+The upcoming configuration UI will provide the user-facing controls for these decisions.
+
+The intended first-run interaction is roughly:
+
+```text
+New fixed-volume output detected
+
+DELL U4025QW
+
+[ Manage ]    [ Ignore ]
+```
+
+Once a decision changes, the running Host can reconcile the new configuration without restarting.
+
+---
+
+## Architecture
+
+Soundfridge currently inherits the core multi-process architecture of SoundBridge, but responsibilities are being simplified.
+
+```text
+┌──────────────────────┐
+│ Soundfridge App      │
+│ Swift / SwiftUI      │
+│                      │
+│ Setup & preferences  │
+└──────────┬───────────┘
+           │
+           │ configuration
+           ▼
+┌──────────────────────┐
+│ Soundfridge Host     │
+│ Swift                │
+│                      │
+│ Device discovery     │
+│ Lifecycle management │
+│ Audio rendering      │
+└──────────┬───────────┘
+           │
+           │ shared memory / control state
+           ▼
+┌──────────────────────┐
+│ HAL Virtual Driver   │
+│ C++ / libASPL        │
+│                      │
+│ Core Audio proxies   │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Physical Device      │
+│ HDMI / DP / USB      │
+└──────────────────────┘
+```
+
+### Host lifecycle
+
+The Host has an explicit lifecycle:
+
+```text
+STARTING
+   │
+   ├── device available ──► ACTIVE
+   │
+   └── no device ─────────► IDLE
+
+IDLE ◄────────────────────► ACTIVE
+
+IDLE / ACTIVE ────────────► STOPPING
+```
+
+`IDLE` is a normal operating state. The Host remains alive but does not keep an unnecessary AudioEngine running.
+
+When a managed device appears, the Host can initialize the required audio resources and become active. When the last managed device disappears, those resources are torn down and the Host returns to idle.
+
+---
+
+## Relationship to SoundBridge
+
+Soundfridge exists because of the substantial work done in the original [SoundBridge](https://github.com/chenjy16/SoundBridge) project.
+
+In particular, SoundBridge provided important foundations including:
+
+- the Core Audio HAL virtual-driver architecture
+- the Swift Host engine
+- shared-memory communication between driver and Host
+- physical-device discovery and routing
+- installation and packaging work
+- the original macOS application
+- DSP infrastructure
+- a working demonstration that this approach is viable on modern macOS
+
+Soundfridge began as a fork while investigating fixes and improvements to SoundBridge.
+
+Some generally useful fixes developed during that work are being contributed back upstream where appropriate.
+
+The projects now differ mainly in product direction.
+
+SoundBridge was designed around a visible menu bar application with its own volume controls and additional audio features such as EQ.
+
+Soundfridge instead aims for a small background system whose primary user interface for volume is **macOS itself**.
+
+The original author's work remains an important part of Soundfridge's technical lineage and is gratefully acknowledged.
+
+---
+
+## Repository layout
+
+The repository still largely reflects the inherited SoundBridge structure and will change as the project evolves.
+
+```text
+soundfridge/
+├── apps/mac/
+│   └── SoundBridgeApp/          # Existing macOS app; being redesigned
 ├── packages/
-│   ├── driver/                 # CoreAudio HAL virtual driver (C++)
-│   │   ├── src/Plugin.cpp      # Driver runtime logic
-│   │   ├── include/            # RFSharedAudio.h (shared memory protocol)
-│   │   └── vendor/libASPL/     # HAL plugin C++ wrapper
-│   ├── host/                   # Background audio host (Swift)
-│   │   └── Sources/
-│   │       └── SoundBridgeHost/
-│   │           ├── Audio/      # AudioRenderer, AudioEngine
-│   │           ├── Devices/    # DeviceDiscovery, DeviceRegistry
-│   │           └── Services/   # SharedMemoryManager, DSPProcessor
-│   └── dsp/                    # DSP engine (C/C++)
-│       ├── include/            # Public C API
-│       ├── src/                # Biquad filters, limiter, engine
-│       ├── bridge/             # Objective-C++ wrapper for Swift
-│       └── tests/              # 33 automated tests
-├── tools/                      # Build, sign, notarize, DMG scripts
-├── Makefile                    # Development shortcuts
-└── .github/workflows/          # Release CI (build + sign + notarize + DMG)
+│   ├── driver/                  # Core Audio HAL virtual driver
+│   ├── host/                    # Background Host engine
+│   └── dsp/                     # Inherited DSP subsystem
+├── tools/
+├── Makefile
+└── README.md
 ```
 
-## Building from Source
+Names and directory structure still contain `SoundBridge` in several places. Renaming is not currently a priority; functionality and architecture are being stabilized first.
 
-### Prerequisites
+The inherited DSP subsystem also remains in the repository for now. Soundfridge's core goal does not require a user-facing EQ, so its long-term role has not yet been decided.
 
-- macOS 13.0 (Ventura) or later
-- Xcode Command Line Tools (`xcode-select --install`)
-- CMake (`brew install cmake`)
-- Git (for submodule management)
+---
 
-检查依赖是否就绪：
+## Building from source
+
+Soundfridge currently uses the inherited SoundBridge build system.
+
+### Requirements
+
+- macOS
+- Xcode Command Line Tools
+- CMake
+- Git
+- the `libASPL` Git submodule
+
+Clone and initialize submodules:
+
+```bash
+git clone <soundfridge-repository-url>
+cd soundfridge
+git submodule update --init --recursive
+```
+
+Install/check build dependencies:
 
 ```bash
 make install-deps
 ```
 
-### Clone & Initialize
-
-项目依赖 git submodule（HAL 驱动使用的 [libASPL](https://github.com/gavv/libASPL) 库），克隆后必须初始化：
+Build all components:
 
 ```bash
-git clone https://github.com/chenjy16/SoundBridge.git
-cd SoundBridge
-git submodule update --init --recursive
-```
-
-> ⚠️ 如果跳过 submodule 初始化，构建 HAL Driver 时会报错：`does not contain a CMakeLists.txt file`。
-
-### Quick Build
-
-```bash
-# 构建所有组件（DSP、Driver、Host、App），输出 universal binary（arm64 + x86_64）
 make build
-
-# 运行应用
-make run
 ```
 
-`make build` 会自动完成以下步骤：
-1. 从 git tag 更新版本号到各组件的 Info.plist / CMakeLists.txt
-2. 构建 DSP 库（C++，universal）
-3. 构建 HAL 虚拟驱动（C++，universal，依赖 libASPL）
-4. 构建 Audio Host（Swift，universal）
-5. 构建 Menu Bar App（Swift，universal）
-6. 创建 `dist/SoundBridge.app` 应用包
-
-构建产物位于 `dist/SoundBridge.app`。
-
-### 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `make build` | 构建所有组件（DSP、Driver、Host、App） |
-| `make bundle` | 仅创建 .app 包（需先 build） |
-| `make run` | 运行已构建的应用 |
-| `make dev` | 重置状态 + 构建 + 运行（完整的开发流程，会触发 onboarding） |
-| `make clean` | 清理所有构建产物 |
-| `make rebuild` | clean + 完整重新构建 |
-| `make quick` | 仅重新构建 Swift 代码（更快的迭代速度） |
-| `make test` | 运行 DSP 测试套件 |
-| `make update-version` | 从 git tag 更新各组件版本号 |
-
-### 打包与分发
+For Host-only development, a release build is often faster and avoids rebuilding unrelated components:
 
 ```bash
-# 代码签名
-make sign
-
-# 验证签名
-make verify
-
-# 创建 DMG 安装包（含拖拽到 Applications 的布局）
-make dmg
-
-# 完整发布流程：构建 → 签名 → 验证 → DMG
-make full-release
+swift build --package-path packages/host --configuration release
 ```
 
-| 命令 | 说明 |
-|------|------|
-| `make sign` | 使用 Developer ID 证书对 .app 进行代码签名 |
-| `make verify` | 验证所有组件的代码签名 |
-| `make dmg` | 创建带拖拽安装布局的 DMG 文件 |
-| `make release` | 构建 + 签名 + 验证 |
-| `make full-release` | 构建 + 签名 + 验证 + DMG（完整流水线） |
-| `make test-release` | 测试已签名的 release 构建 |
-
-> 代码签名需要有效的 Apple Developer ID 证书。如果仅本地开发测试，可以跳过签名步骤直接使用 `make build` + `make run`。
-
-### 手动构建各组件
-
-如果需要单独构建某个组件：
+Run the Host directly:
 
 ```bash
-# 1. DSP 库（C++）
-cmake -S packages/dsp -B packages/dsp/build -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-cmake --build packages/dsp/build
-
-# 2. HAL 驱动（C++，依赖 libASPL submodule）
-cmake -S packages/driver -B packages/driver/build -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-cmake --build packages/driver/build
-
-# 3. Host 引擎（Swift）
-cd packages/host && swift build -c release
-
-# 4. Menu Bar 应用（Swift）
-cd apps/mac/SoundBridgeApp && swift build -c release
+packages/host/start_host.sh
 ```
 
-### 构建产物
+### Tests
 
-```
-dist/
-└── SoundBridge.app/
-    └── Contents/
-        ├── MacOS/
-        │   ├── SoundBridgeApp          # 主程序（Menu Bar 应用）
-        │   └── SoundBridgeHost         # 后台音频引擎
-        ├── Resources/
-        │   ├── SoundBridgeDriver.driver/  # HAL 虚拟驱动
-        │   └── ...                        # 图标、字体等资源
-        └── Info.plist
+Run the DSP test suite with:
+
+```bash
+make test
 ```
 
-## Release Pipeline
+The build and development workflow is still inherited from SoundBridge and is expected to change as Soundfridge's application and installation model are redesigned.
 
-Releases are automated via GitHub Actions. When you publish a release with a `vX.Y.Z` tag:
+---
 
-1. Builds all components as universal binaries (arm64 + x86_64)
-2. Creates the `.app` bundle
-3. Code signs with Developer ID certificate
-4. Notarizes with Apple
-5. Creates a signed and notarized DMG
-6. Uploads assets to the GitHub Release
+## Development priorities
 
-Required repository secrets: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`, `APPLE_TEAM_ID`.
+Near-term development is focused on closing the configuration loop between the background Host and a minimal macOS application.
+
+The next major milestone is:
+
+```text
+Host discovers new candidate device
+        │
+        ▼
+device recorded as pending
+        │
+        ▼
+configuration app is notified
+        │
+        ▼
+user chooses Manage or Ignore
+        │
+        ▼
+configuration is saved
+        │
+        ▼
+Host reconciles immediately
+```
+
+After that, attention can move toward installation, persistent service management, packaging, and release engineering.
+
+---
 
 ## Contributing
 
-Contributions are welcome. The codebase is structured so each component can be built and tested independently:
+Soundfridge is still young, and architecture may change quickly.
 
-- DSP changes: `make test` runs the C++ test suite
-- Driver changes: rebuild and `sudo killall coreaudiod` to reload
-- Host/App changes: `make quick` for fast Swift-only rebuilds
+Small, focused changes are preferred over large feature additions. The project currently values:
+
+- simple designs
+- native macOS behavior
+- clear failure modes
+- readable code
+- minimal dependencies
+- changes that can be tested independently
+
+Bug fixes that are broadly applicable to the original SoundBridge project should also be considered for contribution upstream.
+
+---
 
 ## License
 
-MIT
+Soundfridge is derived from SoundBridge, which is distributed under the MIT License.
+
+See the repository's license file for the applicable license text and attribution requirements.
+
+---
+
+## Acknowledgements
+
+Soundfridge is based on **SoundBridge**, originally created by **chenjy16**.
+
+The original project established the Core Audio architecture and much of the implementation that Soundfridge continues to build upon.
+
+Thank you to the SoundBridge author and the open-source projects it depends on, including `libASPL`.
