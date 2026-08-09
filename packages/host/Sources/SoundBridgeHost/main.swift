@@ -43,6 +43,7 @@ let sleepWakeMonitor = SleepWakeMonitor()
 private var signalSources: [DispatchSourceSignal] = []
 
 private var deviceRegistryChangedToken: Int32 = 0
+private var bounceRequestToken: Int32 = 0
 
 func main() {
 
@@ -64,7 +65,14 @@ func main() {
         exit(1)
     }
 
+    setupSleepWakeMonitoring()
+    setupBounceRequestListener()
+    setupSignalHandlers()
+
+    logger.info("Signal handlers installed")
+
     print("[Step 1] Discovering physical audio devices...")
+
     let devices = deviceDiscovery.enumeratePhysicalDevices()
 
     if devices.isEmpty {
@@ -75,9 +83,6 @@ func main() {
         print("[Step 2] Registering device change listeners...")
         deviceMonitor.registerListeners()
         setupDeviceRegistryChangeListener()
-
-        setupSignalHandlers()
-        logger.info("Signal handlers installed")
 
         RunLoop.current.run()
         return
@@ -136,31 +141,6 @@ func main() {
         }
     }
 
-    print("[Step 7.5] Registering sleep/wake handler...")
-    sleepWakeMonitor.onSleep = {
-        print("[SleepWake] System entering sleep, stopping AudioEngine...")
-        audioEngine.stop()
-        logger.info("AudioEngine stopped before sleep")
-    }
-    sleepWakeMonitor.onWake = {
-        print("[SleepWake] Recovering after wake...")
-        deviceMonitor.reregisterListeners()
-        deviceMonitor.resetDebounce()
-        proxyManager.reregisterVolumeForwarding()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            do {
-                try audioEngine.setup(devices: deviceRegistry.devices,
-                                      preferredDeviceID: proxyManager.activePhysicalDeviceID)
-                try audioEngine.start()
-                logger.info("AudioEngine restarted after wake")
-            } catch {
-                logger.error("AudioEngine restart failed: \(error.localizedDescription)")
-            }
-        }
-    }
-    sleepWakeMonitor.start()
-
     print("[Step 8] Setting up audio engine with device fallback...")
 
     // Get the user's preferred device from proxy manager (set during autoSelectProxy)
@@ -206,25 +186,50 @@ func main() {
         exit(1)
     }
 
-    setupSignalHandlers()
-
-    logger.info("Signal handlers installed")
-
-    // Listen for bounce requests from App via Darwin notification
-    var bounceToken: Int32 = 0
-    let bounceStatus = _notify_register_dispatch(
-        "com.soundbridge.bounce-request",
-        &bounceToken,
-        DispatchQueue.global(qos: .userInitiated)
-    ) { _ in
-        logger.info("Received bounce request from App")
-        proxyManager.bounceDevice()
-    }
-    if bounceStatus != 0 {
-        logger.error("Failed to register bounce notification listener (status: \(bounceStatus))")
-    }
-
     RunLoop.current.run()
+}
+
+func setupSleepWakeMonitoring() {
+    sleepWakeMonitor.onSleep = {
+        guard deviceMonitor.hostState == .active else {
+            logger.info("Host is idle; no AudioEngine to stop before sleep")
+            return
+        }
+
+        print("[SleepWake] System entering sleep, stopping AudioEngine...")
+        audioEngine.stop()
+        logger.info("AudioEngine stopped before sleep")
+    }
+
+    sleepWakeMonitor.onWake = {
+        print("[SleepWake] Recovering after wake...")
+
+        deviceMonitor.reregisterListeners()
+        deviceMonitor.resetDebounce()
+        proxyManager.reregisterVolumeForwarding()
+
+        guard deviceMonitor.hostState == .active else {
+            logger.info("Host is idle after wake; skipping AudioEngine restart")
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            do {
+                try audioEngine.setup(
+                    devices: deviceRegistry.devices,
+                    preferredDeviceID: proxyManager.activePhysicalDeviceID
+                )
+                try audioEngine.start()
+                logger.info("AudioEngine restarted after wake")
+            } catch {
+                logger.error(
+                    "AudioEngine restart failed: \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    sleepWakeMonitor.start()
 }
 
 func setupSignalHandlers() {
@@ -267,6 +272,24 @@ func setupDeviceRegistryChangeListener() {
     }
 }
 
+func setupBounceRequestListener() {
+    let status = _notify_register_dispatch(
+        "com.soundbridge.bounce-request",
+        &bounceRequestToken,
+        DispatchQueue.global(qos: .userInitiated)
+    ) { _ in
+        print("[Bounce] Received bounce request")
+        logger.info("Received bounce request from App")
+        proxyManager.bounceDevice()
+    }
+
+    if status != 0 {
+        logger.error(
+            "Failed to register bounce notification listener (status: \(status))"
+        )
+    }
+}
+
 func cleanup() {
 
     deviceMonitor.setHostState(.stopping)
@@ -274,6 +297,11 @@ func cleanup() {
     if deviceRegistryChangedToken != 0 {
         _ = _notify_cancel(deviceRegistryChangedToken)
         deviceRegistryChangedToken = 0
+    }
+
+    if bounceRequestToken != 0 {
+        _ = _notify_cancel(bounceRequestToken)
+        bounceRequestToken = 0
     }
 
     print("\n[Cleanup] Starting cleanup process...")

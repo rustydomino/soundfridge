@@ -23,7 +23,7 @@ class DeviceMonitor {
     private var listenersRegistered = false
     private var devicesListenerRegistered = false
     private var defaultOutputListenerRegistered = false
-    private var hostState: HostState = .starting
+    private(set) var hostState: HostState = .starting
     init(
         registry: DeviceRegistry,
         proxyManager: ProxyDeviceManager,
