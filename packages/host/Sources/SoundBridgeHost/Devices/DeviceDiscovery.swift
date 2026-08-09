@@ -18,14 +18,16 @@ struct PhysicalDevice {
 
 class DeviceDiscovery {
 
-    private let managedDeviceStore = ManagedDeviceStore()
+    private let deviceRegistryStore = DeviceRegistryStore()
 
     func enumeratePhysicalDevices() -> [PhysicalDevice] {
 
         var devices: [PhysicalDevice] = []
 
-        // Load the current managed-device selection for this enumeration pass.
-        let managedDeviceUIDs = managedDeviceStore.loadSelectedUIDs()
+        guard var knownDevices = deviceRegistryStore.loadDevices() else {
+            print("[DeviceEnum] ✗ Unable to load device registry")
+            return []
+        }
 
         print("[DeviceEnum] ===== ENUMERATING AUDIO DEVICES =====")
 
@@ -130,9 +132,32 @@ class DeviceDiscovery {
                 continue
             }
 
-            if let selectedUIDs = managedDeviceUIDs,
-            !selectedUIDs.contains(uid) {
-                print("[DeviceEnum] ✗ SKIP: Device not selected for management")
+            if let knownDevice = knownDevices[uid] {
+                switch knownDevice.decision {
+                case .managed:
+                    break
+
+                case .ignored:
+                    print("[DeviceEnum] ✗ SKIP: Device previously ignored")
+                    continue
+
+                case .pending:
+                    print("[DeviceEnum] ✗ SKIP: Device awaiting user decision")
+                    continue
+                }
+            } else {
+                knownDevices[uid] = KnownDevice(
+                    name: name,
+                    decision: .pending
+                )
+
+                do {
+                    try deviceRegistryStore.saveDevices(knownDevices)
+                    print("[DeviceEnum] NEW: Recorded device as pending: \(name)")
+                } catch {
+                    print("[DeviceEnum] ✗ Failed to save new device to registry: \(error)")
+                }
+
                 continue
             }
 

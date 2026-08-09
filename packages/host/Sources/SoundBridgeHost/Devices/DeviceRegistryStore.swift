@@ -13,16 +13,22 @@
 
 import Foundation
 
-/// On-disk Soundfridge configuration.
-///
-/// Keep the persistence format isolated here so the rest of the Host does not
-/// need to know whether configuration is stored as a plist, JSON, or something
-/// else.
-private struct ManagedDeviceConfiguration: Codable {
-    var managedDeviceUIDs: [String]
+enum DeviceDecision: String, Codable {
+    case pending
+    case managed
+    case ignored
 }
 
-final class ManagedDeviceStore {
+struct KnownDevice: Codable {
+    var name: String
+    var decision: DeviceDecision
+}
+
+private struct DeviceRegistryConfiguration: Codable {
+    var knownDevices: [String: KnownDevice]
+}
+
+final class DeviceRegistryStore {
     private let fileURL: URL
 
     init(
@@ -32,36 +38,29 @@ final class ManagedDeviceStore {
         self.fileURL = fileURL
     }
 
-    /// Load the configured managed-device UIDs.
-    ///
-    /// Returns nil when no configuration file exists yet. This distinguishes:
-    ///
-    ///   nil         = Soundfridge has not been configured yet
-    ///   empty Set   = configured, but no devices selected
-    ///   nonempty Set = explicitly selected devices
-    func loadSelectedUIDs() -> Set<String>? {
+    func loadDevices() -> [String: KnownDevice]? {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            return nil
+            return [:]
         }
 
         do {
             let data = try Data(contentsOf: fileURL)
+
             let config = try PropertyListDecoder().decode(
-                ManagedDeviceConfiguration.self,
+                DeviceRegistryConfiguration.self,
                 from: data
             )
 
-            return Set(config.managedDeviceUIDs)
+            return config.knownDevices
         } catch {
-            print("[ManagedDevices] Failed to load config: \(error)")
+            print("[DeviceRegistry] Failed to load config: \(error)")
             return nil
         }
     }
 
-    /// Save the selected device UIDs as an XML property list.
-    func saveSelectedUIDs(_ uids: Set<String>) throws {
-        let config = ManagedDeviceConfiguration(
-            managedDeviceUIDs: uids.sorted()
+    func saveDevices(_ devices: [String: KnownDevice]) throws {
+        let config = DeviceRegistryConfiguration(
+            knownDevices: devices
         )
 
         let encoder = PropertyListEncoder()
