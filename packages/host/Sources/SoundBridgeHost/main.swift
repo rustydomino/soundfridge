@@ -65,9 +65,17 @@ func main() {
     print("[Step 1] Discovering physical audio devices...")
     let devices = deviceDiscovery.enumeratePhysicalDevices()
 
-    guard !devices.isEmpty else {
-        logger.error("No physical output devices found")
-        exit(1)
+    if devices.isEmpty {
+        logger.info("No managed audio devices currently available; entering idle mode")
+
+        print("[Step 2] Registering device change listeners...")
+        deviceMonitor.registerListeners()
+
+        setupSignalHandlers()
+        logger.info("Signal handlers installed")
+
+        RunLoop.current.run()
+        return
     }
 
     let validatedDevices = devices.filter { $0.validationPassed }

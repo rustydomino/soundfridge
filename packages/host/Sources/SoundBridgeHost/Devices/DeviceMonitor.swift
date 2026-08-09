@@ -136,6 +136,19 @@ class DeviceMonitor {
             !newDevices.contains { $0.uid == old.uid }
         }
 
+        let startingFromIdle = !audioEngine.isInitialized && !newDevices.isEmpty
+
+        if startingFromIdle {
+            let preferredDevice =
+                proxyManager.resolveCurrentOutputDevice(in: newDevices)
+                ?? newDevices.first!
+
+            let sampleRate = discovery.getDeviceNominalSampleRate(preferredDevice.id)
+            SoundBridgeConfig.activeSampleRate = sampleRate
+
+            print("[DeviceMonitor] Leaving idle mode: \(sampleRate) Hz (from \(preferredDevice.name))")
+        }
+
         // 1. Create shared memory for new devices
         for device in addedDevices {
             print("Device added: \(device.name) (\(discovery.transportTypeName(device.transportType)))")
@@ -148,6 +161,28 @@ class DeviceMonitor {
 
         // 2. Update registry (writes control file + sends Darwin notification)
         registry.update(newDevices)
+
+        if startingFromIdle {
+            memoryManager.startHeartbeat()
+
+            do {
+                let preferredDevice =
+                    proxyManager.resolveCurrentOutputDevice(in: newDevices)
+                    ?? newDevices.first!
+
+                try audioEngine.setup(
+                    devices: newDevices,
+                    preferredDeviceID: preferredDevice.id
+                )
+                try audioEngine.start()
+
+                logger.info("Audio engine started after leaving idle mode")
+            } catch {
+                logger.error(
+                    "Failed to start audio engine after leaving idle mode: \(error.localizedDescription)"
+                )
+            }
+        }
 
         // 3. Delay shared memory removal for removed devices
         if !removedDevices.isEmpty {

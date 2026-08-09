@@ -10,6 +10,9 @@ class AudioEngine {
     private let registry: DeviceRegistry
     private var outputUnit: AudioUnit?
     private var currentDeviceID: AudioDeviceID?
+    var isInitialized: Bool {
+            outputUnit != nil
+        }
 
     init(renderer: AudioRenderer, registry: DeviceRegistry) {
         self.renderer = renderer
