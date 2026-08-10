@@ -39,8 +39,8 @@ final class DeviceConfigurationModel: ObservableObject {
 
     private var pendingDeviceNotifyToken: Int32 = 0
 
-    init(store: DeviceRegistryStore = DeviceRegistryStore()) {
-        self.store = store
+    init(store: DeviceRegistryStore? = nil) {
+        self.store = store ?? DeviceRegistryStore()
         reload()
         startPendingDeviceMonitoring()
     }
