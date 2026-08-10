@@ -6,6 +6,8 @@ import SwiftUI
 /// can display the same persistent device registry used by the Host.
 struct DeviceConfigurationView: View {
     @ObservedObject var model: DeviceConfigurationModel
+    @ObservedObject var hostStatusModel: HostStatusModel
+
     @State private var devicePendingRemoval: DeviceConfigurationRow?
     @State private var showingBlockedDevices = false
 
@@ -34,6 +36,19 @@ struct DeviceConfigurationView: View {
             Text("System")
                 .font(.headline)
 
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(hostStatusColor)
+                    .frame(width: 9, height: 9)
+
+                Text("SoundFridge Service")
+
+                Spacer()
+
+                Text(hostStatusText)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack {
                 Spacer()
 
@@ -46,6 +61,9 @@ struct DeviceConfigurationView: View {
         .frame(minWidth: 480, minHeight: 300)
         .sheet(isPresented: $showingBlockedDevices) {
            BlockedDevicesView(model: model)
+        }
+        .onAppear {
+            hostStatusModel.refresh()
         }
     }
 
@@ -156,6 +174,26 @@ struct DeviceConfigurationView: View {
         """
     }
 
+    private var hostStatusText: String {
+        switch hostStatusModel.status {
+        case .checking:
+            return "Checking…"
+        case .running:
+            return "Running"
+        case .stopped:
+            return "Stopped"
+        }
+    }
 
+    private var hostStatusColor: Color {
+        switch hostStatusModel.status {
+        case .checking:
+            return .gray
+        case .running:
+            return .green
+        case .stopped:
+            return .red
+        }
+    }
 
 }

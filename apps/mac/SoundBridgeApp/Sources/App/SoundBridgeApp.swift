@@ -34,7 +34,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let model = DeviceConfigurationModel()
-        let view = DeviceConfigurationView(model: model)
+        let hostStatusModel = HostStatusModel()
+
+        let view = DeviceConfigurationView(
+            model: model,
+            hostStatusModel: hostStatusModel
+        )
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
