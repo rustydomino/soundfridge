@@ -33,6 +33,7 @@ final class DeviceConfigurationModel: ObservableObject {
     @Published private(set) var devices: [DeviceConfigurationRow] = []
     @Published private(set) var loadError: String?
     @Published private(set) var saveError: String?
+    @Published private(set) var blockedDevices: [DeviceConfigurationRow] = []
 
     private let store: DeviceRegistryStore
 
@@ -48,18 +49,15 @@ final class DeviceConfigurationModel: ObservableObject {
     func reload() {
         guard let knownDevices = store.loadDevices() else {
             devices = []
+            blockedDevices = []
             loadError = "Unable to read the SoundFridge device configuration."
             return
         }
 
         loadError = nil
 
-        devices = knownDevices.compactMap { uid, device in
-            guard device.decision != .blacklisted else {
-                return nil
-            }
-
-            return DeviceConfigurationRow(
+        let rows = knownDevices.map { uid, device in
+            DeviceConfigurationRow(
                 id: uid,
                 name: device.name,
                 decision: device.decision
@@ -67,6 +65,14 @@ final class DeviceConfigurationModel: ObservableObject {
         }
         .sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+
+        devices = rows.filter {
+            $0.decision != .blacklisted
+        }
+
+        blockedDevices = rows.filter {
+            $0.decision == .blacklisted
         }
     }
 
@@ -197,4 +203,87 @@ final class DeviceConfigurationModel: ObservableObject {
             saveError = "Unable to save the SoundFridge device configuration."
         }
     }
+
+    /// Return a blocked device to the normal device list.
+    ///
+    /// The device becomes pending again so the user can decide whether
+    /// SoundFridge should manage it.
+    func unblockDevice(_ uid: String) {
+        guard var knownDevices = store.loadDevices(),
+            var device = knownDevices[uid] else {
+            saveError = "Unable to find the selected device in the SoundFridge configuration."
+            return
+        }
+
+        device.decision = .pending
+        knownDevices[uid] = device
+
+        do {
+            try store.saveDevices(knownDevices)
+            saveError = nil
+
+            let status = _notify_post(
+                "com.soundbridge.device-registry-changed"
+            )
+
+            if status != 0 {
+                print(
+                    "[DeviceRegistry] Failed to notify Host of configuration change "
+                    + "(status: \(status))"
+                )
+            }
+
+            reload()
+        } catch {
+            print("[DeviceRegistry] Failed to save config: \(error)")
+            saveError = "Unable to save the SoundFridge device configuration."
+        }
+    }
+
+    /// Unblock every currently blacklisted device.
+    func clearBlacklist() {
+        guard var knownDevices = store.loadDevices() else {
+            saveError = "Unable to read the SoundFridge device configuration."
+            return
+        }
+
+        var changed = false
+
+        for uid in knownDevices.keys {
+            guard var device = knownDevices[uid],
+                device.decision == .blacklisted else {
+                continue
+            }
+
+            device.decision = .pending
+            knownDevices[uid] = device
+            changed = true
+        }
+
+        guard changed else {
+            return
+        }
+
+        do {
+            try store.saveDevices(knownDevices)
+            saveError = nil
+
+            let status = _notify_post(
+                "com.soundbridge.device-registry-changed"
+            )
+
+            if status != 0 {
+                print(
+                    "[DeviceRegistry] Failed to notify Host of configuration change "
+                    + "(status: \(status))"
+                )
+            }
+
+            reload()
+        } catch {
+            print("[DeviceRegistry] Failed to save config: \(error)")
+            saveError = "Unable to save the SoundFridge device configuration."
+        }
+    }
+
 }

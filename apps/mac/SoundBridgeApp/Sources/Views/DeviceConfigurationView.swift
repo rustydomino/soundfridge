@@ -7,6 +7,7 @@ import SwiftUI
 struct DeviceConfigurationView: View {
     @ObservedObject var model: DeviceConfigurationModel
     @State private var devicePendingRemoval: DeviceConfigurationRow?
+    @State private var showingBlockedDevices = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -24,9 +25,22 @@ struct DeviceConfigurationView: View {
             } else {
                 deviceList
             }
+
+            Divider()
+
+            HStack {
+                Spacer()
+
+                Button("Blocked Devices…") {
+                    showingBlockedDevices = true
+                }
+            }
         }
         .padding(24)
         .frame(minWidth: 480, minHeight: 300)
+        .sheet(isPresented: $showingBlockedDevices) {
+           BlockedDevicesView(model: model)
+        }
     }
 
     private var deviceList: some View {
