@@ -1,16 +1,3 @@
-// Original prompt: "ok. now that we have decided plist for SF, what is next step?"
-// Date: 2026-08-08
-//
-// Purpose:
-// Persist the stable Core Audio UIDs of devices selected for Soundfridge
-// management in a macOS property-list configuration file.
-//
-// Build/test:
-//   make build
-//
-// Inspect the saved plist with:
-//   plutil -p "$HOME/Library/Application Support/SoundBridge/config.plist"
-
 import Foundation
 
 enum DeviceDecision: String, Codable {
@@ -31,11 +18,18 @@ private struct DeviceRegistryConfiguration: Codable {
 final class DeviceRegistryStore {
     private let fileURL: URL
 
-    init(
-        fileURL: URL = PathManager.appSupportDir
-            .appendingPathComponent("config.plist")
-    ) {
-        self.fileURL = fileURL
+    init(fileURL: URL? = nil) {
+        if let fileURL {
+            self.fileURL = fileURL
+            return
+        }
+
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!.appendingPathComponent("SoundBridge")
+
+        self.fileURL = appSupport.appendingPathComponent("config.plist")
     }
 
     func loadDevices() -> [String: KnownDevice]? {

@@ -1,0 +1,94 @@
+import Foundation
+import Combine
+import Darwin
+
+//Darwin notification API used to tell the Host that the registry changed. 
+@_silgen_name("notify_post")
+private func _notify_post(_ name: UnsafePointer<CChar>) -> UInt32
+
+/// One device row presented by the SoundFridge configuration UI.
+///
+/// The stable Core Audio UID is the identity. We never use the transient
+/// AudioDeviceID as persistent device identity.
+struct DeviceConfigurationRow: Identifiable {
+    let id: String
+    let name: String
+    let decision: DeviceDecision
+}
+
+/// Loads the SoundFridge device registry and exposes it to SwiftUI.
+///
+/// This first version is intentionally read-only. Device decision changes
+/// and Host notifications will be added only after the display path works.
+@MainActor
+final class DeviceConfigurationModel: ObservableObject {
+    @Published private(set) var devices: [DeviceConfigurationRow] = []
+    @Published private(set) var loadError: String?
+    @Published private(set) var saveError: String?
+
+    private let store: DeviceRegistryStore
+
+    init(store: DeviceRegistryStore = DeviceRegistryStore()) {
+        self.store = store
+        reload()
+    }
+
+    /// Reload the registry from disk.
+    func reload() {
+        guard let knownDevices = store.loadDevices() else {
+            devices = []
+            loadError = "Unable to read the SoundFridge device configuration."
+            return
+        }
+
+        loadError = nil
+
+        devices = knownDevices.map { uid, device in
+            DeviceConfigurationRow(
+                id: uid,
+                name: device.name,
+                decision: device.decision
+            )
+        }
+        .sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+    }
+
+    /// Enable or disable SoundFridge volume control for a known device.
+    ///
+    /// The GUI persists the user's decision, then tells the Host to reread the
+    /// registry and reconcile its managed devices immediately.
+    func setVolumeControlEnabled(_ enabled: Bool, for uid: String) {
+        guard var knownDevices = store.loadDevices(),
+            var device = knownDevices[uid] else {
+            saveError = "Unable to find the selected device in the SoundFridge configuration."
+            return
+        }
+
+        device.decision = enabled ? .managed : .ignored
+        knownDevices[uid] = device
+
+        do {
+            try store.saveDevices(knownDevices)
+            saveError = nil
+
+            let status = _notify_post(
+                "com.soundbridge.device-registry-changed"
+            )
+
+            if status != 0 {
+                print(
+                    "[DeviceRegistry] Failed to notify Host of configuration change "
+                    + "(status: \(status))"
+                )
+            }
+
+            reload()
+        } catch {
+            print("[DeviceRegistry] Failed to save config: \(error)")
+            saveError = "Unable to save the SoundFridge device configuration."
+        }
+    }
+
+}

@@ -20,52 +20,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set to true during uninstall to suppress Host terminationHandler from
     /// calling NSApp.terminate prematurely.
     var isUninstalling = false
+    var deviceConfigurationWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Register custom font
-        registerCustomFont()
+        // SoundFridge's GUI is a configuration utility.
+        // The background Host has its own lifecycle and continues independently.
+        NSApp.setActivationPolicy(.regular)
 
-        // Initialize Sparkle updater
-        initializeUpdater()
-
-        // Check if onboarding is needed
-        if !OnboardingState.hasCompleted() {
-            // Will switch to .regular in showOnboarding()
-            showOnboarding()
-            return
+        Task { @MainActor in
+            showDeviceConfigurationWindow()
         }
-
-        // Onboarding complete - run as menu bar app only
-        NSApp.setActivationPolicy(.accessory)
-
-        // Check for driver version mismatch (lazy update)
-        checkDriverVersionMismatch()
-
-        // Launch audio host if not already running
-        launchHostIfNeeded()
-
-        // Start IPC monitoring for device state updates from Host
-        IPCController.shared.onDeviceStateChanged = { _ in
-            VolumeController.shared.refreshDeviceList()
-            VolumeController.shared.findAndBindProxyDevice()
-        }
-        IPCController.shared.startMonitoring()
-
-        // Retry proxy device binding after a short delay to handle the race
-        // where Host hasn't created the proxy device yet at startup.
-        // Run on background queue to avoid blocking main thread if CoreAudio HAL
-        // is slow to respond (e.g. coreaudiod proxy system not ready).
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 2.0) {
-            VolumeController.shared.refreshDeviceList()
-            VolumeController.shared.findAndBindProxyDevice()
-        }
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5.0) {
-            VolumeController.shared.refreshDeviceList()
-            VolumeController.shared.findAndBindProxyDevice()
-        }
-
-        // Set up menu bar UI
-        setupMenuBar()
     }
 
     func initializeUpdater() {
@@ -198,6 +162,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("Showing onboarding")
     }
 
+    @MainActor
+    func showDeviceConfigurationWindow() {
+        // Reuse the existing window if it has already been created.
+        if let window = deviceConfigurationWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let model = DeviceConfigurationModel()
+        let view = DeviceConfigurationView(model: model)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.title = "SoundFridge"
+        window.contentViewController = NSHostingController(rootView: view)
+        window.center()
+        window.isReleasedWhenClosed = false
+
+        deviceConfigurationWindow = window
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     func setupMenuBar() {
         print("setupMenuBar() called")
 
@@ -241,58 +235,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // If uninstalling, driver and host are already gone — skip heavy cleanup
-        if isUninstalling {
-            print("=== applicationWillTerminate (uninstall mode, skipping cleanup) ===")
-            return
-        }
-
-        let logsDir = FileManager.default.urls(
-            for: .libraryDirectory,
-            in: .userDomainMask
-        ).first!.appendingPathComponent("Logs/SoundBridge")
-
-        try? FileManager.default.createDirectory(
-            at: logsDir,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
-
-        let logFile = logsDir.appendingPathComponent("app.log").path
-
-        // Open log file handle once and reuse for all messages
-        let logHandle: FileHandle? = {
-            if !FileManager.default.fileExists(atPath: logFile) {
-                FileManager.default.createFile(atPath: logFile, contents: nil)
-            }
-            let handle = FileHandle(forWritingAtPath: logFile)
-            handle?.seekToEndOfFile()
-            return handle
-        }()
-
-        func log(_ message: String) {
-            let logMessage = "[\(Date())] \(message)\n"
-            if let data = logMessage.data(using: .utf8) {
-                logHandle?.write(data)
-            }
-            print(message)
-        }
-
-        log("=== applicationWillTerminate CALLED ===")
-
-        // Clean up CoreAudio listeners to prevent leaks
-        VolumeController.shared.cleanup()
-
-        // Stop IPC monitoring
-        IPCController.shared.stopMonitoring()
-
-        // Perform cleanup directly from the app
-        performCleanup(logger: log)
-
-        terminateHostAndProxies(logger: log)
-
-        logHandle?.closeFile()
-        print("=== applicationWillTerminate COMPLETE ===")
+        // The SoundFridge GUI does not own the background Host.
+        // Closing the configuration app must not interrupt audio service.
+        print("SoundFridge configuration app terminating")
     }
 
     /// Best-effort fallback to stop any running SoundBridgeHost even if we did not launch it.
