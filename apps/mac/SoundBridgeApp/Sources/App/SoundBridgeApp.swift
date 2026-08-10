@@ -35,10 +35,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let model = DeviceConfigurationModel()
         let hostStatusModel = HostStatusModel()
+        let driverStatusModel = DriverStatusModel()
 
         let view = DeviceConfigurationView(
             model: model,
-            hostStatusModel: hostStatusModel
+            hostStatusModel: hostStatusModel,
+            driverStatusModel: driverStatusModel
         )
 
         let window = NSWindow(

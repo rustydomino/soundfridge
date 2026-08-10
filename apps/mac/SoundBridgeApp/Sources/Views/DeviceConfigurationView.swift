@@ -7,6 +7,7 @@ import SwiftUI
 struct DeviceConfigurationView: View {
     @ObservedObject var model: DeviceConfigurationModel
     @ObservedObject var hostStatusModel: HostStatusModel
+    @ObservedObject var driverStatusModel: DriverStatusModel
 
     @State private var devicePendingRemoval: DeviceConfigurationRow?
     @State private var showingBlockedDevices = false
@@ -68,6 +69,19 @@ struct DeviceConfigurationView: View {
                 }
             }
 
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(driverStatusColor)
+                    .frame(width: 9, height: 9)
+
+                Text("Audio Driver")
+
+                Spacer()
+
+                Text(driverStatusText)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack {
                 Spacer()
 
@@ -83,6 +97,7 @@ struct DeviceConfigurationView: View {
         }
         .onAppear {
             hostStatusModel.refresh()
+            driverStatusModel.refresh()
         }
     }
 
@@ -200,6 +215,28 @@ struct DeviceConfigurationView: View {
         case .running:
             return .green
         case .stopped:
+            return .red
+        }
+    }
+
+    private var driverStatusText: String {
+        switch driverStatusModel.status {
+        case .checking:
+            return "Checking…"
+        case .installed:
+            return "Installed"
+        case .notInstalled:
+            return "Not Installed"
+        }
+    }
+
+    private var driverStatusColor: Color {
+        switch driverStatusModel.status {
+        case .checking:
+            return .gray
+        case .installed:
+            return .green
+        case .notInstalled:
             return .red
         }
     }
