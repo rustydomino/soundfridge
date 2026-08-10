@@ -44,8 +44,6 @@ struct DeviceConfigurationView: View {
 
                 Text("SoundFridge Service")
 
-                Spacer()
-
                 switch hostStatusModel.status {
                 case .checking:
                     Text("Checking…")
@@ -55,14 +53,23 @@ struct DeviceConfigurationView: View {
                     Text("Running")
                         .foregroundStyle(.secondary)
 
+                case .stopped:
+                    Text("Stopped")
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                switch hostStatusModel.status {
+                case .checking:
+                    EmptyView()
+
+                case .running:
                     Button("Stop") {
                         hostStatusModel.stop()
                     }
 
                 case .stopped:
-                    Text("Stopped")
-                        .foregroundStyle(.secondary)
-
                     Button("Start") {
                         hostStatusModel.start()
                     }
@@ -76,10 +83,25 @@ struct DeviceConfigurationView: View {
 
                 Text("Audio Driver")
 
-                Spacer()
-
                 Text(driverStatusText)
                     .foregroundStyle(.secondary)
+
+                Spacer()
+
+                switch driverStatusModel.status {
+                case .checking:
+                    EmptyView()
+
+                case .installed:
+                    Button("Uninstall…") {
+                        // Driver uninstall action will be implemented next.
+                    }
+
+                case .notInstalled:
+                    Button("Install…") {
+                        // Driver install action will be implemented next.
+                    }
+                }
             }
 
             HStack {
