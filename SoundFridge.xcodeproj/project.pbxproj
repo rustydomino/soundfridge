@@ -33,12 +33,6 @@
 			path = SoundFridge;
 			sourceTree = "<group>";
 		};
-		27FAA42A302A4EF3000D7CFF /* SoundBridgeDriver.driver */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			name = SoundBridgeDriver.driver;
-			path = packages/driver/build/SoundBridgeDriver.driver;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,7 +58,6 @@
 				27FAA40D3029B604000D7CFF /* HostStatusModel.swift */,
 				27FAA4123029B649000D7CFF /* BlockedDevicesView.swift */,
 				27FAA4133029B649000D7CFF /* DeviceConfigurationView.swift */,
-				27FAA42A302A4EF3000D7CFF /* SoundBridgeDriver.driver */,
 			);
 			sourceTree = "<group>";
 		};
@@ -87,6 +80,7 @@
 				27B440093029B45F0046D44E /* Frameworks */,
 				27B4400A3029B45F0046D44E /* Resources */,
 				27FAA42C302A501D000D7CFF /* Copy Driver Payload */,
+				27FAA42D302A68F8000D7CFF /* Copy Host Payload */,
 			);
 			buildRules = (
 			);
@@ -169,6 +163,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -euo pipefail\n\nDRIVER_SOURCE=\"${SRCROOT}/packages/driver/build/SoundBridgeDriver.driver\"\nDRIVER_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SoundBridgeDriver.driver\"\n\nINFO_SOURCE=\"${DRIVER_SOURCE}/Contents/Info.plist\"\nBINARY_SOURCE=\"${DRIVER_SOURCE}/Contents/MacOS/SoundBridgeDriver\"\n\nINFO_DEST=\"${DRIVER_DEST}/Contents/Info.plist\"\nBINARY_DEST=\"${DRIVER_DEST}/Contents/MacOS/SoundBridgeDriver\"\n\n# Verify that the built driver payload exists.\nif [[ ! -f \"${INFO_SOURCE}\" || ! -f \"${BINARY_SOURCE}\" ]]; then\n    echo \"error: Built SoundBridgeDriver.driver is incomplete or missing.\"\n    exit 1\nfi\n\n# Re-create the driver bundle structure inside SoundFridge.app.\nmkdir -p \"${DRIVER_DEST}/Contents/MacOS\"\n\n# Preserve file permissions and timestamps while copying the payload.\ncp -p \"${INFO_SOURCE}\" \"${INFO_DEST}\"\ncp -p \"${BINARY_SOURCE}\" \"${BINARY_DEST}\"\n\necho \"Bundled SoundBridgeDriver.driver at:\"\necho \"${DRIVER_DEST}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		27FAA42D302A68F8000D7CFF /* Copy Host Payload */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/packages/host/.build/arm64-apple-macosx/release/SoundBridgeHost",
+			);
+			name = "Copy Host Payload";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/SoundBridgeHost",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\nHOST_SOURCE=\"${SRCROOT}/packages/host/.build/arm64-apple-macosx/release/SoundBridgeHost\"\nHOST_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SoundBridgeHost\"\n\nif [[ ! -x \"${HOST_SOURCE}\" ]]; then\n    echo \"error: SoundBridgeHost release binary was not found.\"\n    echo \"error: Expected: ${HOST_SOURCE}\"\n    echo \"error: Build it with:\"\n    echo \"error: swift build --package-path packages/host --configuration release\"\n    exit 1\nfi\n\n/bin/cp -p \"${HOST_SOURCE}\" \"${HOST_DEST}\"\n\necho \"Bundled SoundBridgeHost at:\"\necho \"${HOST_DEST}\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
