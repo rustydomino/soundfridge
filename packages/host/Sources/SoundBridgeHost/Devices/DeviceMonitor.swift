@@ -174,6 +174,10 @@ class DeviceMonitor {
             print("Device removed: \(device.name) (\(discovery.transportTypeName(device.transportType)))")
         }
 
+        // Creating a new proxy can cause Core Audio to select it automatically.
+        // Remember the user's current output so we can preserve their destination.
+        let defaultOutputBeforeProxyCreation = getCurrentDefaultOutputDeviceID()
+
         // 2. Update registry (writes control file + sends Darwin notification)
         registry.update(newDevices)
         if enteringIdle {
@@ -219,9 +223,12 @@ class DeviceMonitor {
             }
         }
 
-        // 4. Wait for proxy devices and auto-switch for new devices
+        // 4. Wait for new proxies and preserve the user's selected output
         if !addedDevices.isEmpty {
-            waitForProxyAndSwitch(addedDevices: addedDevices)
+            waitForProxyAndPreserveOutput(
+                addedDevices: addedDevices,
+                previousDefaultOutputDeviceID: defaultOutputBeforeProxyCreation
+            )
         }
         // NOTE: reloadDriver() removed — Darwin notifications replace manual reload
     }
@@ -291,30 +298,94 @@ class DeviceMonitor {
         }
     }
 
-    private func waitForProxyAndSwitch(addedDevices: [PhysicalDevice]) {
+    private func waitForProxyAndPreserveOutput(
+        addedDevices: [PhysicalDevice],
+        previousDefaultOutputDeviceID: AudioDeviceID?
+    ) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
 
-            let deadline = Date().addingTimeInterval(SoundBridgeConfig.deviceWaitTimeout)
+            let deadline = Date().addingTimeInterval(
+                SoundBridgeConfig.deviceWaitTimeout
+            )
 
             for device in addedDevices {
-                var proxyID: AudioDeviceID? = nil
+                var proxyID: AudioDeviceID?
 
                 while Date() < deadline {
-                    proxyID = self.proxyManager.findProxyDevice(forPhysicalUID: device.uid)
-                    if proxyID != nil { break }
+                    proxyID = self.proxyManager.findProxyDevice(
+                        forPhysicalUID: device.uid
+                    )
+
+                    if proxyID != nil {
+                        break
+                    }
+
                     Thread.sleep(forTimeInterval: 0.1)
                 }
 
-                if proxyID != nil {
-                    DispatchQueue.main.async {
-                        self.proxyManager.handlePhysicalSelection(device.uid)
+                guard proxyID != nil else {
+                    logger.warning(
+                        "Proxy device not found for \(device.name) after \(SoundBridgeConfig.deviceWaitTimeout)s timeout"
+                    )
+                    continue
+                }
+
+                DispatchQueue.main.async {
+                    guard let previousDeviceID = previousDefaultOutputDeviceID else {
+                        return
                     }
-                } else {
-                    logger.warning("Proxy device not found for \(device.name) after \(SoundBridgeConfig.deviceWaitTimeout)s timeout")
+
+                    // If this physical device was already selected, switch to its
+                    // new SoundFridge proxy to remain selected preserves the same
+                    // physical audio destination.
+
+                    if previousDeviceID == device.id {
+                        print(
+                            "[DeviceMonitor] \(device.name) was already active; "
+                            + "switching to its SoundBridge proxy"
+                        )
+
+                        self.proxyManager.handlePhysicalSelection(device.uid)
+                        return
+                    }
+
+                    // Otherwise proxy creation must not steal the user's output.
+                    if self.proxyManager.setDefaultOutputDevice(previousDeviceID) {
+                        print(
+                            "[DeviceMonitor] Restored previous output after creating "
+                            + "proxy for \(device.name)"
+                        )
+                    } else {
+                        logger.warning(
+                            "Failed to restore previous output after creating proxy for \(device.name)"
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private func getCurrentDefaultOutputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var deviceID: AudioDeviceID = 0
+        var dataSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &dataSize,
+            &deviceID
+        )
+
+        return status == noErr ? deviceID : nil
     }
 
     private func reloadDriver() {
