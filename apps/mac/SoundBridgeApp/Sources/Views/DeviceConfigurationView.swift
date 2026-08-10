@@ -23,7 +23,16 @@ struct DeviceConfigurationView: View {
                 deviceList
             }
 
+            if let saveError = model.saveError {
+                Text(saveError)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+
             Divider()
+
+            Text("System")
+                .font(.headline)
 
             HStack {
                 Spacer()
@@ -146,4 +155,7 @@ struct DeviceConfigurationView: View {
         Blacklist the device to prevent SoundFridge from showing or prompting for it again.
         """
     }
+
+
+
 }
