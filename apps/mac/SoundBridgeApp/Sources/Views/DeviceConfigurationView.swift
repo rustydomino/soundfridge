@@ -11,6 +11,7 @@ struct DeviceConfigurationView: View {
 
     @State private var devicePendingRemoval: DeviceConfigurationRow?
     @State private var showingBlockedDevices = false
+    @State private var showingDriverUninstallConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -94,12 +95,12 @@ struct DeviceConfigurationView: View {
 
                 case .installed:
                     Button("Uninstall…") {
-                        // Driver uninstall action will be implemented next.
+                        showingDriverUninstallConfirmation = true
                     }
 
                 case .notInstalled:
                     Button("Install…") {
-                        // Driver install action will be implemented next.
+                        driverStatusModel.install()
                     }
                 }
             }
@@ -120,6 +121,39 @@ struct DeviceConfigurationView: View {
         .onAppear {
             hostStatusModel.refresh()
             driverStatusModel.refresh()
+        }
+        .confirmationDialog(
+            "Uninstall Audio Driver?",
+            isPresented: $showingDriverUninstallConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Uninstall", role: .destructive) {
+                driverStatusModel.uninstall()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "SoundFridge will remove its audio driver and restart Core Audio. " +
+                "Audio playback may be interrupted briefly."
+            )
+        }
+        .alert(
+            "Audio Driver Operation Failed",
+            isPresented: Binding(
+                get: { driverStatusModel.operationError != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        driverStatusModel.clearOperationError()
+                    }
+                }
+            )
+        ) {
+            Button("OK") {
+                driverStatusModel.clearOperationError()
+            }
+        } message: {
+            Text(driverStatusModel.operationError ?? "Unknown error.")
         }
     }
 
