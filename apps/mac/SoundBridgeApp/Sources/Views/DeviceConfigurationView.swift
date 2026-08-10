@@ -11,11 +11,8 @@ struct DeviceConfigurationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("SoundFridge")
-                .font(.title)
-                .fontWeight(.semibold)
 
-            Text("Volume Control")
+            Text("Devices Apple decided didn't need volume control")
                 .font(.headline)
 
             if let loadError = model.loadError {
@@ -51,7 +48,7 @@ struct DeviceConfigurationView: View {
                         .font(.body)
 
                     Toggle(
-                        "Master volume control",
+                        "Give it volume control",
                         isOn: Binding(
                             get: {
                                 device.decision == .managed
