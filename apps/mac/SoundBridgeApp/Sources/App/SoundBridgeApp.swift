@@ -60,6 +60,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("SoundFridge configuration app terminating")
     }
 
+    /// SoundFridge's GUI is only a configuration utility.
+    ///
+    /// Closing its last window quits the GUI process. The background Host has
+    /// its own lifecycle and continues running independently.
+    func applicationShouldTerminateAfterLastWindowClosed(
+        _ sender: NSApplication
+    ) -> Bool {
+        true
+    }
+
     /// Poll a Process for exit up to timeout seconds.
     private func waitForProcessExit(_ process: Process, timeout: TimeInterval, logger: (String) -> Void) {
         let deadline = Date().addingTimeInterval(timeout)
