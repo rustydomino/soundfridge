@@ -45,8 +45,27 @@ struct DeviceConfigurationView: View {
 
                 Spacer()
 
-                Text(hostStatusText)
-                    .foregroundStyle(.secondary)
+                switch hostStatusModel.status {
+                case .checking:
+                    Text("Checking…")
+                        .foregroundStyle(.secondary)
+
+                case .running:
+                    Text("Running")
+                        .foregroundStyle(.secondary)
+
+                    Button("Stop") {
+                        hostStatusModel.stop()
+                    }
+
+                case .stopped:
+                    Text("Stopped")
+                        .foregroundStyle(.secondary)
+
+                    Button("Start") {
+                        hostStatusModel.start()
+                    }
+                }
             }
 
             HStack {
@@ -172,17 +191,6 @@ struct DeviceConfigurationView: View {
 
         Blacklist the device to prevent SoundFridge from showing or prompting for it again.
         """
-    }
-
-    private var hostStatusText: String {
-        switch hostStatusModel.status {
-        case .checking:
-            return "Checking…"
-        case .running:
-            return "Running"
-        case .stopped:
-            return "Stopped"
-        }
     }
 
     private var hostStatusColor: Color {
