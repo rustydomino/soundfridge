@@ -1,8 +1,8 @@
-import Foundation
 import Combine
 import Darwin
+import Foundation
 
-//Darwin notification API used to tell the Host that the registry changed. 
+/// Darwin notification API used to tell the Host that the registry changed.
 @_silgen_name("notify_post")
 private func _notify_post(_ name: UnsafePointer<CChar>) -> UInt32
 
@@ -13,7 +13,6 @@ private func _notify_register_dispatch(
     _ queue: DispatchQueue,
     _ handler: @escaping @convention(block) (Int32) -> Void
 ) -> UInt32
-
 
 /// One device row presented by the SoundFridge configuration UI.
 ///
@@ -55,8 +54,12 @@ final class DeviceConfigurationModel: ObservableObject {
 
         loadError = nil
 
-        devices = knownDevices.map { uid, device in
-            DeviceConfigurationRow(
+        devices = knownDevices.compactMap { uid, device in
+            guard device.decision != .blacklisted else {
+                return nil
+            }
+
+            return DeviceConfigurationRow(
                 id: uid,
                 name: device.name,
                 decision: device.decision
@@ -82,11 +85,10 @@ final class DeviceConfigurationModel: ObservableObject {
         if status != 0 {
             print(
                 "[DeviceConfiguration] Failed to register pending-device "
-                + "notification (status: \(status))"
+                    + "notification (status: \(status))"
             )
         }
     }
-
 
     /// Enable or disable SoundFridge volume control for a known device.
     ///
@@ -94,7 +96,8 @@ final class DeviceConfigurationModel: ObservableObject {
     /// registry and reconcile its managed devices immediately.
     func setVolumeControlEnabled(_ enabled: Bool, for uid: String) {
         guard var knownDevices = store.loadDevices(),
-            var device = knownDevices[uid] else {
+              var device = knownDevices[uid]
+        else {
             saveError = "Unable to find the selected device in the SoundFridge configuration."
             return
         }
@@ -113,7 +116,7 @@ final class DeviceConfigurationModel: ObservableObject {
             if status != 0 {
                 print(
                     "[DeviceRegistry] Failed to notify Host of configuration change "
-                    + "(status: \(status))"
+                        + "(status: \(status))"
                 )
             }
 
@@ -130,7 +133,8 @@ final class DeviceConfigurationModel: ObservableObject {
     /// still connected and eligible, the Host may discover it again as pending.
     func removeDevice(_ uid: String) {
         guard var knownDevices = store.loadDevices(),
-              knownDevices.removeValue(forKey: uid) != nil else {
+              knownDevices.removeValue(forKey: uid) != nil
+        else {
             saveError = "Unable to find the selected device in the SoundFridge configuration."
             return
         }
@@ -146,7 +150,7 @@ final class DeviceConfigurationModel: ObservableObject {
             if status != 0 {
                 print(
                     "[DeviceRegistry] Failed to notify Host of configuration change "
-                    + "(status: \(status))"
+                        + "(status: \(status))"
                 )
             }
 
@@ -157,4 +161,40 @@ final class DeviceConfigurationModel: ObservableObject {
         }
     }
 
+    /// Block a device from future SoundFridge discovery and enrollment.
+    ///
+    /// The device remains in the registry so its stable UID can be recognized,
+    /// but it is hidden from the normal device list and ignored by the Host.
+    func blacklistDevice(_ uid: String) {
+        guard var knownDevices = store.loadDevices(),
+              var device = knownDevices[uid]
+        else {
+            saveError = "Unable to find the selected device in the SoundFridge configuration."
+            return
+        }
+
+        device.decision = .blacklisted
+        knownDevices[uid] = device
+
+        do {
+            try store.saveDevices(knownDevices)
+            saveError = nil
+
+            let status = _notify_post(
+                "com.soundbridge.device-registry-changed"
+            )
+
+            if status != 0 {
+                print(
+                    "[DeviceRegistry] Failed to notify Host of configuration change "
+                        + "(status: \(status))"
+                )
+            }
+
+            reload()
+        } catch {
+            print("[DeviceRegistry] Failed to save config: \(error)")
+            saveError = "Unable to save the SoundFridge device configuration."
+        }
+    }
 }

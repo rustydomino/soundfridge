@@ -67,19 +67,32 @@ struct DeviceConfigurationView: View {
             }
             .padding(.vertical, 4)
         }
-        .alert(item: $devicePendingRemoval) { device in
-            Alert(
-                title: Text("Remove \(device.name) from SoundFridge?"),
-                message: Text(
-                    "This forgets the device and removes it from SoundFridge’s device list. "
-                        + "If the device is still connected and compatible, SoundFridge may "
-                        + "detect it again as a new device."
-                ),
-                primaryButton: .destructive(Text("Remove")) {
-                    model.removeDevice(device.id)
+        .confirmationDialog(
+            "Remove device?",
+            isPresented: Binding(
+                get: {
+                    devicePendingRemoval != nil
                 },
-                secondaryButton: .cancel()
-            )
+                set: { isPresented in
+                    if !isPresented {
+                        devicePendingRemoval = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: devicePendingRemoval
+        ) { device in
+            Button("Remove") {
+                model.removeDevice(device.id)
+            }
+
+            Button("Blacklist Device", role: .destructive) {
+                model.blacklistDevice(device.id)
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: { device in
+            Text(removalMessage(for: device))
         }
     }
 
@@ -115,14 +128,11 @@ struct DeviceConfigurationView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func statusText(for decision: DeviceDecision) -> String {
-        switch decision {
-        case .pending:
-            return "Needs configuration"
-        case .managed:
-            return "Volume control on"
-        case .ignored:
-            return "Volume control off"
-        }
+    private func removalMessage(for device: DeviceConfigurationRow) -> String {
+        """
+        Remove \(device.name) to forget it. If it is connected again, SoundFridge may detect it as a new device.
+
+        Blacklist the device to prevent SoundFridge from showing or prompting for it again.
+        """
     }
 }

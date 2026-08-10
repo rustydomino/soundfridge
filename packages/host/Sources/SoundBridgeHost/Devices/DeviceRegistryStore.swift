@@ -17,6 +17,7 @@ enum DeviceDecision: String, Codable {
     case pending
     case managed
     case ignored
+    case blacklisted
 }
 
 struct KnownDevice: Codable {

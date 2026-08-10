@@ -148,6 +148,10 @@ class DeviceDiscovery {
                 case .pending:
                     print("[DeviceEnum] ✗ SKIP: Device awaiting user decision")
                     continue
+
+                case .blacklisted:
+                    print("[DeviceEnum] ✗ SKIP: Device awaiting is blacklisted")
+                    continue
                 }
             } else {
                 knownDevices[uid] = KnownDevice(
