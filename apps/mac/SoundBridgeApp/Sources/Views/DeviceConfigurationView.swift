@@ -11,8 +11,9 @@ struct DeviceConfigurationView: View {
 
     @State private var devicePendingRemoval: DeviceConfigurationRow?
     @State private var showingBlockedDevices = false
+    @State private var showingDriverInstallConfirmation = false
     @State private var showingDriverUninstallConfirmation = false
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
@@ -100,7 +101,7 @@ struct DeviceConfigurationView: View {
 
                 case .notInstalled:
                     Button("Install…") {
-                        driverStatusModel.install()
+                        showingDriverInstallConfirmation = true
                     }
                 }
             }
@@ -136,6 +137,22 @@ struct DeviceConfigurationView: View {
             Text(
                 "SoundFridge will remove its audio driver and restart Core Audio. " +
                 "Audio playback may be interrupted briefly."
+            )
+        }
+        .confirmationDialog(
+            "Install Audio Driver?",
+            isPresented: $showingDriverInstallConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Install") {
+                driverStatusModel.install()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "SoundFridge needs to install its audio driver to provide volume control. " +
+                "Installing it will restart Core Audio, which may briefly interrupt playback."
             )
         }
         .alert(
