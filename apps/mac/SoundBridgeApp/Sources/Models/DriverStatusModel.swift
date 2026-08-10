@@ -96,12 +96,21 @@ final class DriverStatusModel: ObservableObject {
         var error: NSDictionary?
         script.executeAndReturnError(&error)
 
+        // AppleScript error -128 means the user intentionally cancelled
+        // the administrator authentication dialog.
+        if let error,
+        let errorNumber = error["NSAppleScriptErrorNumber"] as? NSNumber,
+        errorNumber.intValue == -128 {
+            return false
+        }
+
         if let error {
             operationError = "Administrator operation failed: \(error)"
             return false
         }
 
         return true
+
     }
 
     func clearOperationError() {
