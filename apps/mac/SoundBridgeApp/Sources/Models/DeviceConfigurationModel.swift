@@ -6,6 +6,15 @@ import Darwin
 @_silgen_name("notify_post")
 private func _notify_post(_ name: UnsafePointer<CChar>) -> UInt32
 
+@_silgen_name("notify_register_dispatch")
+private func _notify_register_dispatch(
+    _ name: UnsafePointer<CChar>,
+    _ outToken: UnsafeMutablePointer<Int32>,
+    _ queue: DispatchQueue,
+    _ handler: @escaping @convention(block) (Int32) -> Void
+) -> UInt32
+
+
 /// One device row presented by the SoundFridge configuration UI.
 ///
 /// The stable Core Audio UID is the identity. We never use the transient
@@ -28,9 +37,12 @@ final class DeviceConfigurationModel: ObservableObject {
 
     private let store: DeviceRegistryStore
 
+    private var pendingDeviceNotifyToken: Int32 = 0
+
     init(store: DeviceRegistryStore = DeviceRegistryStore()) {
         self.store = store
         reload()
+        startPendingDeviceMonitoring()
     }
 
     /// Reload the registry from disk.
@@ -54,6 +66,27 @@ final class DeviceConfigurationModel: ObservableObject {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
     }
+
+    private func startPendingDeviceMonitoring() {
+        let status = _notify_register_dispatch(
+            "com.soundbridge.pending-device",
+            &pendingDeviceNotifyToken,
+            DispatchQueue.main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                print("[DeviceConfiguration] New pending device; reloading registry")
+                self?.reload()
+            }
+        }
+
+        if status != 0 {
+            print(
+                "[DeviceConfiguration] Failed to register pending-device "
+                + "notification (status: \(status))"
+            )
+        }
+    }
+
 
     /// Enable or disable SoundFridge volume control for a known device.
     ///
