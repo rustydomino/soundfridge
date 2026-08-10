@@ -6,8 +6,25 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		27FAA40E3029B604000D7CFF /* DriverStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */; };
+		27FAA40F3029B604000D7CFF /* HostStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40D3029B604000D7CFF /* HostStatusModel.swift */; };
+		27FAA4103029B604000D7CFF /* DeviceRegistryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40B3029B604000D7CFF /* DeviceRegistryStore.swift */; };
+		27FAA4113029B604000D7CFF /* DeviceConfigurationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */; };
+		27FAA4143029B649000D7CFF /* BlockedDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA4123029B649000D7CFF /* BlockedDevicesView.swift */; };
+		27FAA4153029B649000D7CFF /* DeviceConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA4133029B649000D7CFF /* DeviceConfigurationView.swift */; };
+		27FAA4173029B768000D7CFF /* SoundBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		27B4400C3029B45F0046D44E /* SoundFridge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundFridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceConfigurationModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DeviceConfigurationModel.swift; sourceTree = "<group>"; };
+		27FAA40B3029B604000D7CFF /* DeviceRegistryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceRegistryStore.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DeviceRegistryStore.swift; sourceTree = "<group>"; };
+		27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DriverStatusModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DriverStatusModel.swift; sourceTree = "<group>"; };
+		27FAA40D3029B604000D7CFF /* HostStatusModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HostStatusModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/HostStatusModel.swift; sourceTree = "<group>"; };
+		27FAA4123029B649000D7CFF /* BlockedDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BlockedDevicesView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/BlockedDevicesView.swift; sourceTree = "<group>"; };
+		27FAA4133029B649000D7CFF /* DeviceConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceConfigurationView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/DeviceConfigurationView.swift; sourceTree = "<group>"; };
+		27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoundBridgeApp.swift; path = apps/mac/SoundBridgeApp/Sources/App/SoundBridgeApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,8 +49,15 @@
 		27B440033029B45F0046D44E = {
 			isa = PBXGroup;
 			children = (
+				27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */,
 				27B4400E3029B45F0046D44E /* SoundFridge */,
 				27B4400D3029B45F0046D44E /* Products */,
+				27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */,
+				27FAA40B3029B604000D7CFF /* DeviceRegistryStore.swift */,
+				27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */,
+				27FAA40D3029B604000D7CFF /* HostStatusModel.swift */,
+				27FAA4123029B649000D7CFF /* BlockedDevicesView.swift */,
+				27FAA4133029B649000D7CFF /* DeviceConfigurationView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -82,6 +106,7 @@
 				TargetAttributes = {
 					27B4400B3029B45F0046D44E = {
 						CreatedOnToolsVersion = 26.6;
+						LastSwiftMigration = 2660;
 					};
 				};
 			};
@@ -119,6 +144,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				27FAA40E3029B604000D7CFF /* DriverStatusModel.swift in Sources */,
+				27FAA40F3029B604000D7CFF /* HostStatusModel.swift in Sources */,
+				27FAA4103029B604000D7CFF /* DeviceRegistryStore.swift in Sources */,
+				27FAA4143029B649000D7CFF /* BlockedDevicesView.swift in Sources */,
+				27FAA4153029B649000D7CFF /* DeviceConfigurationView.swift in Sources */,
+				27FAA4173029B768000D7CFF /* SoundBridgeApp.swift in Sources */,
+				27FAA4113029B604000D7CFF /* DeviceConfigurationModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,6 +280,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -268,6 +301,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -278,6 +312,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
