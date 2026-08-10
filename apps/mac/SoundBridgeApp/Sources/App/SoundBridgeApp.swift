@@ -5,7 +5,6 @@ import AppKit
 import CoreText
 import CoreGraphics
 import CoreAudio
-import Sparkle
 
 // Main entry point - AppKit-based app with SwiftUI views
 @main
@@ -14,9 +13,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var popover: NSPopover?
     var hostProcess: Process?
     var eventMonitor: EventMonitor?
-    var onboardingCoordinator: OnboardingCoordinator?
-    var updaterController: SPUStandardUpdaterController?
-    var driverUpdateWindow: DriverUpdateWindow?
     /// Set to true during uninstall to suppress Host terminationHandler from
     /// calling NSApp.terminate prematurely.
     var isUninstalling = false
@@ -30,136 +26,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             showDeviceConfigurationWindow()
         }
-    }
-
-    func initializeUpdater() {
-        // Initialize Sparkle with standard user driver
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
-        print("✓ Sparkle updater initialized")
-
-        // Trigger a background check on launch so updates are offered immediately
-        updaterController?.updater.checkForUpdatesInBackground()
-    }
-
-    func checkDriverVersionMismatch() {
-        // Only check if driver is already installed
-        guard VersionManager.isDriverInstalled() else {
-            print("Driver not installed - skipping version check")
-            return
-        }
-
-        // Check for version mismatch
-        if VersionManager.driverNeedsUpdate() {
-            let installedVersion = VersionManager.installedDriverVersion() ?? "unknown"
-            let bundledVersion = VersionManager.bundledDriverVersion() ?? "unknown"
-
-            print("Driver version mismatch detected:")
-            print("  Installed: \(installedVersion)")
-            print("  Bundled: \(bundledVersion)")
-
-            // Only prompt if we haven't already prompted for this version
-            if OnboardingState.lastDriverVersionCheck() != bundledVersion {
-                // Show update prompt
-                showDriverUpdatePrompt(
-                    currentVersion: installedVersion,
-                    newVersion: bundledVersion
-                )
-
-                // Mark this version as checked
-                OnboardingState.updateLastDriverVersionCheck(bundledVersion)
-            } else {
-                print("Already prompted for version \(bundledVersion), skipping")
-            }
-        } else {
-            print("✓ Driver version is up to date")
-        }
-    }
-
-    func showDriverUpdatePrompt(currentVersion: String, newVersion: String) {
-        // Close existing window if any
-        driverUpdateWindow?.close()
-
-        // Create and show driver update window
-        driverUpdateWindow = DriverUpdateWindow(
-            currentVersion: currentVersion,
-            newVersion: newVersion,
-            onUpdate: { [weak self] in
-                self?.performDriverUpdate()
-            },
-            onDismiss: { [weak self] in
-                self?.driverUpdateWindow?.close()
-                self?.driverUpdateWindow = nil
-            }
-        )
-
-        driverUpdateWindow?.center()
-        driverUpdateWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
-    func performDriverUpdate() {
-        // Close the update window
-        driverUpdateWindow?.close()
-        driverUpdateWindow = nil
-
-        // Use existing DriverInstaller logic
-        let installer = DriverInstaller()
-
-        Task {
-            do {
-                try await installer.installDriver()
-                print("✓ Driver updated successfully")
-
-                // Show success alert
-                await MainActor.run {
-                    let alert = NSAlert()
-                    alert.messageText = "Driver Updated"
-                    alert.informativeText = "The SoundBridge audio driver has been updated to version \(VersionManager.bundledDriverVersion() ?? "unknown")."
-                    alert.alertStyle = .informational
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-                }
-            } catch {
-                print("Driver update failed: \(error)")
-                await MainActor.run {
-                    let alert = NSAlert()
-                    alert.messageText = "Update Failed"
-                    alert.informativeText = "Failed to update driver: \(error.localizedDescription)"
-                    alert.alertStyle = .critical
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-                }
-            }
-        }
-    }
-
-    func showOnboarding() {
-        // Switch to regular activation policy to show window properly
-        NSApp.setActivationPolicy(.regular)
-
-        // Create and show onboarding
-        onboardingCoordinator = OnboardingCoordinator()
-        onboardingCoordinator?.show(onComplete: { [weak self] in
-            print("Onboarding completion callback called")
-            self?.launchHostIfNeeded()
-            self?.setupMenuBar()
-            // Retry proxy binding after host has time to start
-            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 2.0) {
-                VolumeController.shared.refreshDeviceList()
-                VolumeController.shared.findAndBindProxyDevice()
-            }
-            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5.0) {
-                VolumeController.shared.refreshDeviceList()
-                VolumeController.shared.findAndBindProxyDevice()
-            }
-            print("Host and menu bar setup complete")
-        })
-
-        print("Showing onboarding")
     }
 
     @MainActor
@@ -982,12 +848,6 @@ class EventMonitor {
 // Main entry point - check for command-line flags before launching app
 extension AppDelegate {
     static func main() {
-        // Check for --reset-onboarding flag
-        if CommandLine.arguments.contains("--reset-onboarding") {
-            OnboardingState.reset()
-            print("Onboarding reset - will show on next launch")
-        }
-
         // Launch the app
         let app = NSApplication.shared
         let delegate = AppDelegate()

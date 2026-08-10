@@ -20,7 +20,6 @@ It does not run real-time DSP processing.
 - 10-band EQ controls with per-band frequency, Q, and filter type.
 - Bundled presets plus user presets persisted as JSON.
 - First-run onboarding and driver installation flow.
-- Sparkle-powered update checks.
 - Menu bar-only interaction model.
 
 ## Prerequisites
