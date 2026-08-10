@@ -124,4 +124,37 @@ final class DeviceConfigurationModel: ObservableObject {
         }
     }
 
+    /// Forget a device completely.
+    ///
+    /// Removing a device deletes its registry entry. If the physical device is
+    /// still connected and eligible, the Host may discover it again as pending.
+    func removeDevice(_ uid: String) {
+        guard var knownDevices = store.loadDevices(),
+              knownDevices.removeValue(forKey: uid) != nil else {
+            saveError = "Unable to find the selected device in the SoundFridge configuration."
+            return
+        }
+
+        do {
+            try store.saveDevices(knownDevices)
+            saveError = nil
+
+            let status = _notify_post(
+                "com.soundbridge.device-registry-changed"
+            )
+
+            if status != 0 {
+                print(
+                    "[DeviceRegistry] Failed to notify Host of configuration change "
+                    + "(status: \(status))"
+                )
+            }
+
+            reload()
+        } catch {
+            print("[DeviceRegistry] Failed to save config: \(error)")
+            saveError = "Unable to save the SoundFridge device configuration."
+        }
+    }
+
 }

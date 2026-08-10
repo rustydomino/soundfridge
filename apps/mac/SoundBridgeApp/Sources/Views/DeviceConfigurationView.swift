@@ -6,6 +6,7 @@ import SwiftUI
 /// can display the same persistent device registry used by the Host.
 struct DeviceConfigurationView: View {
     @ObservedObject var model: DeviceConfigurationModel
+    @State private var devicePendingRemoval: DeviceConfigurationRow?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -31,42 +32,54 @@ struct DeviceConfigurationView: View {
     private var deviceList: some View {
         List(model.devices) { device in
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(device.name)
                         .font(.body)
 
-                    Text(device.id)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    Toggle(
+                        "Master volume control",
+                        isOn: Binding(
+                            get: {
+                                device.decision == .managed
+                            },
+                            set: { enabled in
+                                model.setVolumeControlEnabled(
+                                    enabled,
+                                    for: device.id
+                                )
+                            }
+                        )
+                    )
+                    .disabled(device.decision == .pending)
                 }
 
                 Spacer()
 
-                switch device.decision {
-                case .pending:
-                    HStack {
-                        Button("Enable") {
-                            model.setVolumeControlEnabled(true, for: device.id)
-                        }
-
-                        Button("Ignore") {
-                            model.setVolumeControlEnabled(false, for: device.id)
-                        }
-                    }
-
-                case .managed:
-                    Button("Turn Off") {
-                        model.setVolumeControlEnabled(false, for: device.id)
-                    }
-
-                case .ignored:
-                    Button("Turn On") {
+                if device.decision == .pending {
+                    Button("Manage") {
                         model.setVolumeControlEnabled(true, for: device.id)
+                    }
+                } else {
+                    Button("Remove") {
+                        devicePendingRemoval = device
                     }
                 }
             }
             .padding(.vertical, 4)
+        }
+        .alert(item: $devicePendingRemoval) { device in
+            Alert(
+                title: Text("Remove \(device.name) from SoundFridge?"),
+                message: Text(
+                    "This forgets the device and removes it from SoundFridge’s device list. "
+                        + "If the device is still connected and compatible, SoundFridge may "
+                        + "detect it again as a new device."
+                ),
+                primaryButton: .destructive(Text("Remove")) {
+                    model.removeDevice(device.id)
+                },
+                secondaryButton: .cancel()
+            )
         }
     }
 
