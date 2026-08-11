@@ -13,6 +13,12 @@ final class DriverStatusModel: ObservableObject {
     @Published private(set) var status: DriverStatus = .checking
     @Published private(set) var operationError: String?
 
+private enum PrivilegedOperationResult: Sendable {
+    case success
+    case cancelled
+    case failure(String)
+}
+
     private let driverPath =
         "/Library/Audio/Plug-Ins/HAL/SoundBridgeDriver.driver"
 
@@ -23,6 +29,10 @@ final class DriverStatusModel: ObservableObject {
             : .notInstalled
     }
 
+    func clearOperationError() {
+        operationError = nil
+    }
+    
     /// Install the driver bundled inside SoundFridge.app.
     func install() {
         operationError = nil
@@ -51,8 +61,16 @@ final class DriverStatusModel: ObservableObject {
             "/usr/bin/killall coreaudiod",
         ].joined(separator: " && ")
 
-        _ = runPrivilegedShell(command)
-        refresh()
+        Task { [weak self] in
+            guard let self else { return }
+
+            let result = await Task.detached(priority: .utility) {
+                Self.runPrivilegedShell(command)
+            }.value
+
+            self.handlePrivilegedResult(result)
+            self.refresh()
+        }
     }
 
     /// Remove the installed driver.
@@ -66,8 +84,16 @@ final class DriverStatusModel: ObservableObject {
             "/bin/rm -rf \(quotedDriverPath) ; " +
             "fi && /usr/bin/killall coreaudiod"
 
-        _ = runPrivilegedShell(command)
-        refresh()
+        Task { [weak self] in
+            guard let self else { return }
+
+            let result = await Task.detached(priority: .utility) {
+                Self.runPrivilegedShell(command)
+            }.value
+
+            self.handlePrivilegedResult(result)
+            self.refresh()
+        }
     }
 
     /// Quote a path safely for /bin/sh.
@@ -78,9 +104,13 @@ final class DriverStatusModel: ObservableObject {
         ) + "'"
     }
 
-    /// Execute one shell command through macOS's administrator authorization dialog.
-    @discardableResult
-    private func runPrivilegedShell(_ command: String) -> Bool {
+    /// Execute the administrator operation away from the main/UI thread.
+    ///
+    /// A fresh NSAppleScript instance is created and used entirely on this
+    /// background task; it is never shared between threads.
+    nonisolated private static func runPrivilegedShell(
+        _ command: String
+    ) -> PrivilegedOperationResult {
         let escapedCommand = command
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -89,32 +119,40 @@ final class DriverStatusModel: ObservableObject {
             "do shell script \"\(escapedCommand)\" with administrator privileges"
 
         guard let script = NSAppleScript(source: source) else {
-            operationError = "Could not create the administrator operation."
-            return false
+            return .failure(
+                "Could not create the administrator operation."
+            )
         }
 
         var error: NSDictionary?
         script.executeAndReturnError(&error)
 
-        // AppleScript error -128 means the user intentionally cancelled
-        // the administrator authentication dialog.
+        // AppleScript error -128 means the user intentionally cancelled.
         if let error,
         let errorNumber = error["NSAppleScriptErrorNumber"] as? NSNumber,
         errorNumber.intValue == -128 {
-            return false
+            return .cancelled
         }
 
         if let error {
-            operationError = "Administrator operation failed: \(error)"
-            return false
+            return .failure(
+                "Administrator operation failed: \(error)"
+            )
         }
 
-        return true
+        return .success
+    }   
 
+    /// Apply the result back on DriverStatusModel's main-actor context.
+    private func handlePrivilegedResult(
+        _ result: PrivilegedOperationResult
+    ) {
+        switch result {
+        case .success, .cancelled:
+            break
+
+        case .failure(let message):
+            operationError = message
+        }
     }
-
-    func clearOperationError() {
-        operationError = nil
-    }
-
 }
