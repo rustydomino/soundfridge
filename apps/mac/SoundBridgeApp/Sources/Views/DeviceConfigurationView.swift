@@ -13,7 +13,15 @@ struct DeviceConfigurationView: View {
     @State private var showingBlockedDevices = false
     @State private var showingDriverInstallConfirmation = false
     @State private var showingDriverUninstallConfirmation = false
-    
+   
+    private let deviceRowHeight: CGFloat = 78
+    private let maximumVisibleDeviceRows = 3
+
+    private var deviceListHeight: CGFloat {
+        let visibleRows = min(model.devices.count, maximumVisibleDeviceRows)
+        return CGFloat(visibleRows) * deviceRowHeight
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
@@ -219,6 +227,7 @@ struct DeviceConfigurationView: View {
             }
             .padding(.vertical, 4)
         }
+        .frame(height: deviceListHeight)
         .confirmationDialog(
             "Remove device?",
             isPresented: Binding(
