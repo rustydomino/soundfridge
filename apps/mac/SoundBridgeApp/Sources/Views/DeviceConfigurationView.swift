@@ -44,19 +44,26 @@ struct DeviceConfigurationView: View {
                     .fill(hostStatusColor)
                     .frame(width: 9, height: 9)
 
-                Text("SoundFridge Service")
+                Text("Device Watcher")
 
                 switch hostStatusModel.status {
                 case .checking:
                     Text("Checking…")
                         .foregroundStyle(.secondary)
 
-                case .running:
-                    Text("Running")
+                case .probablyUp:
+                    if let lastChecked = hostStatusModel.lastChecked {
+                            Text("Probably up — checked \(lastChecked.formatted(date: .omitted, time: .shortened))")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Probably up")
+                                .foregroundStyle(.secondary)
+                        }
+                case .notDetected:
+                    Text("Not detected")
                         .foregroundStyle(.secondary)
-
                 case .stopped:
-                    Text("Stopped")
+                    Text("Pretty sure it's stopped")
                         .foregroundStyle(.secondary)
                 }
 
@@ -66,7 +73,7 @@ struct DeviceConfigurationView: View {
                 case .checking:
                     EmptyView()
 
-                case .running:
+                case .probablyUp, .notDetected:
                     Button("Stop") {
                         hostStatusModel.stop()
                     }
@@ -285,8 +292,10 @@ struct DeviceConfigurationView: View {
         switch hostStatusModel.status {
         case .checking:
             return .gray
-        case .running:
+        case .probablyUp:
             return .green
+        case .notDetected:
+            return .yellow
         case .stopped:
             return .red
         }
