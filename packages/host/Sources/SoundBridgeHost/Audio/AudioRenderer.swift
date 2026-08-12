@@ -15,6 +15,12 @@ class AudioRenderer {
     private var tempBuffer: [Float] = []
     private let useTestTone: Bool
     private var dspEngine: OpaquePointer?
+    
+    // Realtime callback telemetry.
+    // The callback only updates lock-free C atomics; logging happens on a
+    // separate timer off the realtime audio thread.
+    private let renderTelemetry: UnsafeMutableRawPointer?
+    private var renderTelemetryTimer: DispatchSourceTimer?
 
     // Gain Stage state
     private var currentGain: Float = -1.0  // negative = uninitialized, snap on first frame
@@ -31,6 +37,12 @@ class AudioRenderer {
         self.memoryManager = memoryManager
         self.proxyManager = proxyManager
         self.useTestTone = (ProcessInfo.processInfo.environment["RF_TEST_TONE"] == "1")
+
+        self.renderTelemetry =
+            ProcessInfo.processInfo.environment["RF_AUDIO_TELEMETRY"] == "1"
+                ? rf_render_telemetry_create()
+                : nil
+
         self.dspEngine = soundbridge_dsp_create(SoundBridgeConfig.activeSampleRate)
 
         // Apply initial preset immediately so DSP is always active
@@ -38,9 +50,19 @@ class AudioRenderer {
             applyInitialPreset(engine: engine)
             presetApplied = true
         }
+
+        if renderTelemetry != nil {
+            startRenderTelemetry()
+        }
     }
 
     deinit {
+        renderTelemetryTimer?.cancel()
+
+        if let telemetry = renderTelemetry {
+            rf_render_telemetry_destroy(telemetry)
+        }
+
         if let engine = dspEngine {
             soundbridge_dsp_destroy(engine)
         }
@@ -58,6 +80,45 @@ class AudioRenderer {
         }
     }
 
+    private func startRenderTelemetry() {
+        let timer = DispatchSource.makeTimerSource(
+            queue: DispatchQueue.global(qos: .utility)
+        )
+
+        timer.schedule(
+            deadline: .now() + 1.0,
+            repeating: 1.0
+        )
+
+        timer.setEventHandler { [weak self] in
+            guard let self = self,
+                let telemetry = self.renderTelemetry else {
+                return
+            }
+
+            var callbackCount: UInt64 = 0
+            var maxGapTicks: UInt64 = 0
+            var maxDurationTicks: UInt64 = 0
+
+            rf_render_telemetry_snapshot(
+                telemetry,
+                &callbackCount,
+                &maxGapTicks,
+                &maxDurationTicks
+            )
+
+            let maxGapMs = rf_render_ticks_to_ms(maxGapTicks)
+            let maxDurationMs = rf_render_ticks_to_ms(maxDurationTicks)
+
+            logger.info(
+                "⏱️ Render: callbacks=\(callbackCount) maxGap=\(maxGapMs, format: .fixed(precision: 2))ms maxDuration=\(maxDurationMs, format: .fixed(precision: 2))ms"
+            )
+        }
+
+        timer.resume()
+        renderTelemetryTimer = timer
+    }
+
     func createRenderCallback() -> AURenderCallback {
         return { (
             inRefCon,
@@ -72,9 +133,21 @@ class AudioRenderer {
             }
 
             let renderer = Unmanaged<AudioRenderer>.fromOpaque(inRefCon).takeUnretainedValue()
-            renderer.render(bufferList: bufferList, frameCount: inNumberFrames)
+
+            let startTicks = rf_render_telemetry_begin(renderer.renderTelemetry)
+
+            renderer.render(
+                bufferList: bufferList,
+                frameCount: inNumberFrames
+            )
+
+            rf_render_telemetry_end(
+                renderer.renderTelemetry,
+                startTicks
+            )
 
             return noErr
+
         }
     }
 

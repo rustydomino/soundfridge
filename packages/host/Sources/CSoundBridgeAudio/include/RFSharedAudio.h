@@ -518,6 +518,24 @@ static inline uint64_t rf_get_underrun_count(const RFSharedAudio* mem) {
     return atomic_load((_Atomic uint64_t*)&mem->underrun_count);
 }
 
+// Read ring-buffer timing counters for non-realtime telemetry.
+static inline uint64_t rf_get_write_index(const RFSharedAudio* mem) {
+    return atomic_load((_Atomic uint64_t*)&mem->write_index);
+}
+
+static inline uint64_t rf_get_read_index(const RFSharedAudio* mem) {
+    return atomic_load((_Atomic uint64_t*)&mem->read_index);
+}
+
+static inline uint64_t rf_get_total_frames_written(const RFSharedAudio* mem) {
+    return atomic_load((_Atomic uint64_t*)&mem->total_frames_written);
+}
+
+static inline uint64_t rf_get_total_frames_read(const RFSharedAudio* mem) {
+    return atomic_load((_Atomic uint64_t*)&mem->total_frames_read);
+}
+
+
 static inline uint64_t rf_get_overrun_count(const RFSharedAudio* mem) {
     return atomic_load((_Atomic uint64_t*)&mem->overrun_count);
 }

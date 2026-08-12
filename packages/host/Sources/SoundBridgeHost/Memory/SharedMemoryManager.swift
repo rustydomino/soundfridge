@@ -13,7 +13,11 @@ class SharedMemoryManager {
     // Telemetry: track last-seen underrun/overrun counts for delta logging
     private var lastUnderrunCounts: [String: UInt64] = [:]
     private var lastOverrunCounts: [String: UInt64] = [:]
+    private var lastWrittenCounts: [String: UInt64] = [:]
+    private var lastReadCounts: [String: UInt64] = [:]
     private var telemetryCounter: Int = 0
+    private let audioTelemetryEnabled =
+        ProcessInfo.processInfo.environment["RF_AUDIO_TELEMETRY"] == "1"
 
     func createMemory(for devices: [PhysicalDevice]) {
         logger.info("Creating shared memory for \(devices.count) devices")
@@ -150,6 +154,42 @@ class SharedMemoryManager {
 
             // Telemetry: log underrun/overrun deltas every 5 seconds (non-RT safe)
             self.telemetryCounter += 1
+
+            // Sample ring-buffer occupancy once per second from the heartbeat thread.
+            // This is intentionally outside the realtime audio callback.
+
+            if self.audioTelemetryEnabled {
+
+                for (uid, mem) in mems {
+                    let writeIndex = rf_get_write_index(mem)
+                    let readIndex = rf_get_read_index(mem)
+                    let written = rf_get_total_frames_written(mem)
+                    let read = rf_get_total_frames_read(mem)
+                    let capacity = UInt64(mem.pointee.ring_capacity_frames)
+
+                    let fillFrames = writeIndex >= readIndex
+                        ? writeIndex - readIndex
+                        : 0
+
+                    let fillPercent = capacity > 0
+                        ? (fillFrames * 100) / capacity
+                        : 0
+
+                    let lastWritten = self.lastWrittenCounts[uid] ?? written
+                    let lastRead = self.lastReadCounts[uid] ?? read
+
+                    let writtenDelta = written - lastWritten
+                    let readDelta = read - lastRead
+
+                    logger.info(
+                        "📊 Ring: \(fillFrames)/\(capacity) frames (\(fillPercent)%) write Δ\(writtenDelta) read Δ\(readDelta) [\(uid, privacy: .public)]"
+                    )
+
+                    self.lastWrittenCounts[uid] = written
+                    self.lastReadCounts[uid] = read
+                }
+            }
+
             if self.telemetryCounter % 5 == 0 {
                 for (uid, mem) in mems {
                     let underruns = rf_get_underrun_count(mem)
