@@ -53,7 +53,7 @@ cat >"$AGENT_PLIST" <<EOF
     <true/>
 
     <key>ProcessType</key>
-    <string>Background</string>
+    <string>Interactive</string>
 </dict>
 </plist>
 EOF

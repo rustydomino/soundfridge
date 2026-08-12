@@ -153,7 +153,7 @@ final class HostStatusModel: ObservableObject {
                 "ProgramArguments": [installedHostURL.path],
                 "RunAtLoad": true,
                 "KeepAlive": true,
-                "ProcessType": "Background"
+                "ProcessType": "Interactive"
             ]
 
             let plistData = try PropertyListSerialization.data(
