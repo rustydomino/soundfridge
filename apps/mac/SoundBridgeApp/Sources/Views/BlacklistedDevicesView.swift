@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Displays devices that SoundFridge has been told to ignore permanently.
 ///
-/// Blocked devices remain in the registry so the Host can recognize their
+/// Blacklisted devices remain in the registry so the Host can recognize their
 /// stable UIDs, but they do not appear in the normal device list.
-struct BlockedDevicesView: View {
+struct BlacklistedDevicesView: View {
     @ObservedObject var model: DeviceConfigurationModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingClearAllConfirmation = false
@@ -12,37 +12,37 @@ struct BlockedDevicesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Blocked Devices")
+                Text("Blacklisted Devices")
                     .font(.title2)
                     .fontWeight(.semibold)
 
                 Text(
-                    "Blocked devices are ignored by SoundFridge and will not "
+                    "Blacklisted devices are ignored by SoundFridge and will not "
                         + "appear as new-device prompts."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
 
-            if model.blockedDevices.isEmpty {
+            if model.blacklistedDevices.isEmpty {
                 VStack {
                     Spacer()
 
-                    Text("No blocked devices.")
+                    Text("No blacklisted devices.")
                         .foregroundStyle(.secondary)
 
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(model.blockedDevices) { device in
+                List(model.blacklistedDevices) { device in
                     HStack {
                         Text(device.name)
 
                         Spacer()
 
-                        Button("Unblock") {
-                            model.unblockDevice(device.id)
+                        Button("Remove from Blacklist") {
+                            model.removeFromBlacklist(device.id)
                         }
                     }
                     .padding(.vertical, 4)
@@ -53,7 +53,7 @@ struct BlockedDevicesView: View {
             Divider()
 
             HStack {
-                if !model.blockedDevices.isEmpty {
+                if !model.blacklistedDevices.isEmpty {
                     Button("Clear All", role: .destructive) {
                         showingClearAllConfirmation = true
                     }
@@ -70,18 +70,18 @@ struct BlockedDevicesView: View {
         .padding(24)
         .frame(width: 520, height: 320)
         .confirmationDialog(
-            "Unblock all devices?",
+            "Clear Blacklist?",
             isPresented: $showingClearAllConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Unblock All", role: .destructive) {
+            Button("Clear Blacklist", role: .destructive) {
                 model.clearBlacklist()
             }
 
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "All blocked devices will return to SoundFridge’s normal "
+                "All blacklisted devices will return to SoundFridge’s normal "
                     + "device enrollment list."
             )
         }

@@ -33,7 +33,7 @@ final class DeviceConfigurationModel: ObservableObject {
     @Published private(set) var devices: [DeviceConfigurationRow] = []
     @Published private(set) var loadError: String?
     @Published private(set) var saveError: String?
-    @Published private(set) var blockedDevices: [DeviceConfigurationRow] = []
+    @Published private(set) var blacklistedDevices: [DeviceConfigurationRow] = []
 
     private let store: DeviceRegistryStore
 
@@ -49,7 +49,7 @@ final class DeviceConfigurationModel: ObservableObject {
     func reload() {
         guard let knownDevices = store.loadDevices() else {
             devices = []
-            blockedDevices = []
+            blacklistedDevices = []
             loadError = "Unable to read the SoundFridge device configuration."
             return
         }
@@ -71,7 +71,7 @@ final class DeviceConfigurationModel: ObservableObject {
             $0.decision != .blacklisted
         }
 
-        blockedDevices = rows.filter {
+        blacklistedDevices = rows.filter {
             $0.decision == .blacklisted
         }
     }
@@ -204,11 +204,11 @@ final class DeviceConfigurationModel: ObservableObject {
         }
     }
 
-    /// Return a blocked device to the normal device list.
+    /// Return a blacklisted device to the normal device list.
     ///
     /// The device becomes pending again so the user can decide whether
     /// SoundFridge should manage it.
-    func unblockDevice(_ uid: String) {
+    func removeFromBlacklist(_ uid: String) {
         guard var knownDevices = store.loadDevices(),
             var device = knownDevices[uid] else {
             saveError = "Unable to find the selected device in the SoundFridge configuration."
@@ -240,7 +240,7 @@ final class DeviceConfigurationModel: ObservableObject {
         }
     }
 
-    /// Unblock every currently blacklisted device.
+    /// Remove every device from the blacklist.
     func clearBlacklist() {
         guard var knownDevices = store.loadDevices() else {
             saveError = "Unable to read the SoundFridge device configuration."

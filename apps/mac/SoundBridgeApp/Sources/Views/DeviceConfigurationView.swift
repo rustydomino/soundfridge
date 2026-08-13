@@ -10,7 +10,7 @@ struct DeviceConfigurationView: View {
     @ObservedObject var driverStatusModel: DriverStatusModel
 
     @State private var devicePendingRemoval: DeviceConfigurationRow?
-    @State private var showingBlockedDevices = false
+    @State private var showingBlacklistedDevices = false
     @State private var showingDriverInstallConfirmation = false
     @State private var showingDriverUninstallConfirmation = false
    
@@ -124,15 +124,15 @@ struct DeviceConfigurationView: View {
             HStack {
                 Spacer()
 
-                Button("Blocked Devices…") {
-                    showingBlockedDevices = true
+                Button("Blacklisted Devices…") {
+                    showingBlacklistedDevices = true
                 }
             }
         }
         .padding(24)
         .frame(minWidth: 480, minHeight: 300)
-        .sheet(isPresented: $showingBlockedDevices) {
-           BlockedDevicesView(model: model)
+        .sheet(isPresented: $showingBlacklistedDevices) {
+           BlacklistedDevicesView(model: model)
         }
         .onAppear {
             hostStatusModel.refresh()
@@ -291,9 +291,9 @@ struct DeviceConfigurationView: View {
 
     private func removalMessage(for device: DeviceConfigurationRow) -> String {
         """
-        Remove \(device.name) to forget it. If it is connected again, SoundFridge may detect it as a new device.
+        Removing \(device.name) makes SoundFridge forget this device. If it is connected again, SoundFridge may detect it as a new device.
 
-        Blacklist the device to prevent SoundFridge from showing or prompting for it again.
+        Blacklist the device instead if you do not want SoundFridge to show it again.
         """
     }
 
