@@ -121,7 +121,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
 
-        window.title = "SoundFridge"
+        window.contentMinSize = NSSize(width: 480, height: 500)
+
+        window.title = "SoundFridge Settings"
         window.contentViewController = NSHostingController(rootView: view)
         window.center()
         window.isReleasedWhenClosed = false
