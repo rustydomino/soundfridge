@@ -18,10 +18,81 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // SoundFridge's GUI is a configuration utility.
         // The background Host has its own lifecycle and continues independently.
         NSApp.setActivationPolicy(.regular)
+        setupMainMenu()
 
         Task { @MainActor in
             showDeviceConfigurationWindow()
         }
+    }
+
+    /// Build the small standard menu set needed by the SoundFridge GUI.
+    ///
+    /// SoundFridge is a single-window configuration utility rather than a
+    /// document-based app, so it does not need File/Edit/View menus.
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        // SoundFridge menu
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu(title: "SoundFridge")
+
+        let aboutItem = NSMenuItem(
+            title: "About SoundFridge",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            keyEquivalent: ""
+        )
+        aboutItem.target = NSApp
+        appMenu.addItem(aboutItem)
+
+        appMenu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "Quit SoundFridge",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+        quitItem.target = NSApp
+        appMenu.addItem(quitItem)
+
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        // Window menu
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "Window")
+
+        let closeItem = NSMenuItem(
+            title: "Close Window",
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        )
+
+        // Leave the target nil so AppKit sends the command through the responder
+        // chain to whichever window is currently active.
+        closeItem.target = nil
+        windowMenu.addItem(closeItem)
+
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+
+        // Help menu
+        let helpMenuItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help")
+
+        let helpItem = NSMenuItem(
+            title: "SoundFridge Help",
+            action: #selector(NSApplication.showHelp(_:)),
+            keyEquivalent: "?"
+        )
+        helpItem.target = NSApp
+        helpMenu.addItem(helpItem)
+
+        helpMenuItem.submenu = helpMenu
+        mainMenu.addItem(helpMenuItem)
+
+        // Tell AppKit which menu is the application's Help menu.
+        NSApp.helpMenu = helpMenu
+        NSApp.mainMenu = mainMenu
     }
 
     @MainActor
