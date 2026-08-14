@@ -13,7 +13,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// calling NSApp.terminate prematurely.
     var isUninstalling = false
     var deviceConfigurationWindow: NSWindow?
-
+    var onboardingWindow: NSWindow?
+    var onboardingModel: OnboardingModel?
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         // SoundFridge's GUI is a configuration utility.
         // The background Host has its own lifecycle and continues independently.
@@ -21,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupMainMenu()
 
         Task { @MainActor in
-            showDeviceConfigurationWindow()
+            showInitialWindow()
         }
     }
 
@@ -95,6 +97,78 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = mainMenu
     }
 
+    @MainActor
+    func showInitialWindow() {
+        let model = OnboardingModel()
+        onboardingModel = model
+
+        switch model.step {
+        case .complete:
+            showDeviceConfigurationWindow()
+
+        case .welcome, .setup, .deviceDiscovery:
+            showOnboardingWelcomeWindow()
+        }
+    }
+
+    @MainActor
+    func showOnboardingWelcomeWindow() {
+        if let window = onboardingWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let view = OnboardingWelcomeView { [weak self] in
+            guard let self else { return }
+
+            self.onboardingModel?.continueFromWelcome()
+            self.showOnboardingSetup()
+        }
+        
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.title = "SoundFridge"
+        window.contentViewController = NSHostingController(rootView: view)
+        window.center()
+        window.isReleasedWhenClosed = false
+
+        onboardingWindow = window
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    @MainActor
+    func showOnboardingSetup() {
+        guard let window = onboardingWindow else {
+            return
+        }
+
+        let driverStatusModel = DriverStatusModel()
+        let hostStatusModel = HostStatusModel()
+
+        let view = OnboardingSetupView(
+            driverStatusModel: driverStatusModel,
+            hostStatusModel: hostStatusModel
+        ) { [weak self] in
+            guard let self else { return }
+
+            // Temporary bridge until Device Discovery exists.
+            self.onboardingModel?.continueToDeviceDiscovery()
+            self.showDeviceConfigurationWindow()
+            self.onboardingWindow?.close()
+            self.onboardingWindow = nil
+        }
+
+        window.contentViewController = NSHostingController(rootView: view)
+    }
+    
     @MainActor
     func showDeviceConfigurationWindow() {
         // Reuse the existing window if it has already been created.
