@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		27242C81302EDA6000F17B2D /* com.soundbridge.host.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = 27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */; };
 		27D1E050302D8FBC007A6593 /* BlacklistedDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D1E04F302D8FBC007A6593 /* BlacklistedDevicesView.swift */; };
 		27FAA40E3029B604000D7CFF /* DriverStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */; };
 		27FAA40F3029B604000D7CFF /* HostStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40D3029B604000D7CFF /* HostStatusModel.swift */; };
@@ -16,7 +17,21 @@
 		27FAA4173029B768000D7CFF /* SoundBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		27242C7D302ED5DA00F17B2D /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchAgents;
+			dstSubfolderSpec = 1;
+			files = (
+				27242C81302EDA6000F17B2D /* com.soundbridge.host.plist in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = com.soundbridge.host.plist; path = apps/mac/SoundBridgeApp/Resources/com.soundbridge.host.plist; sourceTree = "<group>"; };
 		27B4400C3029B45F0046D44E /* SoundFridge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundFridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		27D1E04F302D8FBC007A6593 /* BlacklistedDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BlacklistedDevicesView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/BlacklistedDevicesView.swift; sourceTree = "<group>"; };
 		27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceConfigurationModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DeviceConfigurationModel.swift; sourceTree = "<group>"; };
@@ -49,6 +64,7 @@
 		27B440033029B45F0046D44E = {
 			isa = PBXGroup;
 			children = (
+				27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */,
 				27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */,
 				27B4400E3029B45F0046D44E /* SoundFridge */,
 				27B4400D3029B45F0046D44E /* Products */,
@@ -81,6 +97,7 @@
 				27B4400A3029B45F0046D44E /* Resources */,
 				27FAA42C302A501D000D7CFF /* Copy Driver Payload */,
 				27FAA42D302A68F8000D7CFF /* Copy Host Payload */,
+				27242C7D302ED5DA00F17B2D /* CopyFiles */,
 			);
 			buildRules = (
 			);

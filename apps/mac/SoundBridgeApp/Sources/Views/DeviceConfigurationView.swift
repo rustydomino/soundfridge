@@ -58,7 +58,9 @@ struct DeviceConfigurationView: View {
                 case .checking:
                     Text("Checking…")
                         .foregroundStyle(.secondary)
-
+                case .starting:
+                    Text("Starting…")
+                        .foregroundStyle(.secondary)
                 case .probablyUp:
                     if let lastChecked = hostStatusModel.lastChecked {
                             Text("Probably up — checked \(lastChecked.formatted(date: .omitted, time: .shortened))")
@@ -69,6 +71,9 @@ struct DeviceConfigurationView: View {
                         }
                 case .notDetected:
                     Text("Not detected")
+                        .foregroundStyle(.secondary)
+                case .stopping:
+                    Text("Stopping…")
                         .foregroundStyle(.secondary)
                 case .stopped:
                     Text("Pretty sure it's stopped")
@@ -90,6 +95,12 @@ struct DeviceConfigurationView: View {
                     Button("Start") {
                         hostStatusModel.start()
                     }
+                case .starting:
+                    Button("Starting…") {}
+                        .disabled(true)
+                case .stopping:
+                    Button("Stopping…") {}
+                        .disabled(true)
                 }
             }
 
@@ -299,7 +310,7 @@ struct DeviceConfigurationView: View {
 
     private var hostStatusColor: Color {
         switch hostStatusModel.status {
-        case .checking:
+        case .checking, .starting, .stopping:
             return .gray
         case .probablyUp:
             return .green
