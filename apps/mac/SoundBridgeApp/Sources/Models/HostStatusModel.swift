@@ -57,7 +57,16 @@ final class HostStatusModel: ObservableObject {
                     try service.register()
 
                 case .enabled:
-                    break
+                    if !isHostRunning() {
+                        print(
+                            "[HostStatus] Service is enabled but Host is not running; "
+                                + "re-registering service"
+                        )
+
+                        try await service.unregister()
+                        await waitForServiceToUnregister()
+                        try service.register()
+                    }
 
                 case .requiresApproval:
                     print("[HostStatus] Host service requires user approval")
@@ -135,6 +144,25 @@ final class HostStatusModel: ObservableObject {
         }
     }
 
+    /// Give Service Management a short time to finish unregistering before
+    /// attempting to register the bundled Host again.
+    private func waitForServiceToUnregister() async {
+        for _ in 0..<20 {
+            switch service.status {
+            case .notRegistered, .notFound:
+                return
+
+            case .enabled, .requiresApproval:
+                break
+
+            @unknown default:
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+    
     /// Give launchd a short time to start the Host after registration.
     private func waitForHostToStart() async {
         for _ in 0..<20 {
