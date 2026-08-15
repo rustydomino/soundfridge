@@ -176,13 +176,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let view = OnboardingDeviceDiscoveryView(
             model: model,
-            onManage: { device in
-                // Enrollment is intentionally deferred until the duplex-device
-                // microphone explanation is implemented.
-                print(
-                    "[Onboarding] Manage requested for pending device: "
-                        + "\(device.name) (\(device.id))"
-                )
+            onManage: { [weak self] device in
+                if model.deviceHasInput(for: device.id) {
+                    self?.showOnboardingMicrophoneWarning(
+                        for: device,
+                        model: model
+                    )
+                } else {
+                    print(
+                        "[Onboarding] Output-only device ready to manage: "
+                            + "\(device.name) (\(device.id))"
+                    )
+                }
             },
             onContinue: { [weak self] in
                 guard let self else { return }
@@ -194,6 +199,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         window.contentViewController = NSHostingController(rootView: view)
+    }
+    
+    private func showOnboardingMicrophoneWarning(
+        for device: DeviceConfigurationRow,
+        model: DeviceConfigurationModel
+    ) {
+        guard let window = onboardingWindow else {
+            return
+        }
+
+        let warningView = OnboardingMicrophoneWarningView(
+            deviceName: device.name,
+            onContinue: { [weak self] in
+                print(
+                    "[Onboarding] Duplex device warning acknowledged: "
+                        + "\(device.name) (\(device.id))"
+                )
+
+                self?.showOnboardingDeviceDiscovery()
+            }
+        )
+
+        window.contentView = NSHostingView(rootView: warningView)
     }
     
     @MainActor

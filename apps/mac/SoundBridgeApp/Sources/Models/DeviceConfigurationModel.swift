@@ -194,6 +194,101 @@ final class DeviceConfigurationModel: ObservableObject {
         return connectedUIDs
     }
     
+    /// Return true when a currently connected device also exposes input streams.
+    ///
+    /// SoundFridge only manages output audio, but macOS may display a microphone
+    /// privacy prompt when Core Audio starts I/O on a duplex device.
+    func deviceHasInput(for uid: String) -> Bool {
+        var devicesAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var dataSize: UInt32 = 0
+
+        guard AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject),
+            &devicesAddress,
+            0,
+            nil,
+            &dataSize
+        ) == noErr else {
+            return false
+        }
+
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+
+        guard deviceCount > 0 else {
+            return false
+        }
+
+        var deviceIDs = [AudioDeviceID](
+            repeating: 0,
+            count: deviceCount
+        )
+
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &devicesAddress,
+            0,
+            nil,
+            &dataSize,
+            &deviceIDs
+        ) == noErr else {
+            return false
+        }
+
+        for deviceID in deviceIDs {
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+
+            var deviceUID: Unmanaged<CFString>?
+            var uidSize = UInt32(
+                MemoryLayout<Unmanaged<CFString>?>.size
+            )
+
+            let uidStatus = withUnsafeMutablePointer(to: &deviceUID) { pointer in
+                AudioObjectGetPropertyData(
+                    deviceID,
+                    &uidAddress,
+                    0,
+                    nil,
+                    &uidSize,
+                    pointer
+                )
+            }
+
+            guard uidStatus == noErr,
+                  let currentUID = deviceUID?.takeUnretainedValue() as String?,
+                  currentUID == uid
+            else {
+                continue
+            }
+
+            var inputAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreams,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+
+            var inputSize: UInt32 = 0
+
+            return AudioObjectGetPropertyDataSize(
+                deviceID,
+                &inputAddress,
+                0,
+                nil,
+                &inputSize
+            ) == noErr && inputSize > 0
+        }
+
+        return false
+    }
+    
     private func startDeviceConnectionMonitoring() {
         var devicesAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
