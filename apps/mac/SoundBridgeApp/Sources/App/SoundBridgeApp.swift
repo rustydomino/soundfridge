@@ -1,12 +1,12 @@
-import SwiftUI
-import Foundation
-import Darwin
 import AppKit
-import CoreText
-import CoreGraphics
 import CoreAudio
+import CoreGraphics
+import CoreText
+import Darwin
+import Foundation
+import SwiftUI
 
-// Main entry point - AppKit-based app with SwiftUI views
+/// Main entry point - AppKit-based app with SwiftUI views
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set to true during uninstall to suppress Host terminationHandler from
@@ -15,8 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var deviceConfigurationWindow: NSWindow?
     var onboardingWindow: NSWindow?
     var onboardingModel: OnboardingModel?
-    
-    func applicationDidFinishLaunching(_ notification: Notification) {
+
+    func applicationDidFinishLaunching(_: Notification) {
         // SoundFridge's GUI is a configuration utility.
         // The background Host has its own lifecycle and continues independently.
         NSApp.setActivationPolicy(.regular)
@@ -125,7 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.onboardingModel?.continueFromWelcome()
             self.showOnboardingSetup()
         }
-        
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
             styleMask: [.titled, .closable, .miniaturizable],
@@ -143,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
-    
+
     @MainActor
     func showOnboardingSetup() {
         guard let window = onboardingWindow else {
@@ -183,24 +183,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         model: model
                     )
                 } else {
-                    print(
-                        "[Onboarding] Output-only device ready to manage: "
-                            + "\(device.name) (\(device.id))"
-                    )
+                    model.setVolumeControlEnabled(true, for: device.id)
                 }
             },
             onContinue: { [weak self] in
-                guard let self else { return }
-
-                self.showDeviceConfigurationWindow()
-                self.onboardingWindow?.close()
-                self.onboardingWindow = nil
+                self?.showDeviceConfigurationWindow()
+                self?.onboardingWindow?.close()
             }
         )
 
         window.contentViewController = NSHostingController(rootView: view)
     }
-    
+
     private func showOnboardingMicrophoneWarning(
         for device: DeviceConfigurationRow,
         model: DeviceConfigurationModel
@@ -212,18 +206,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let warningView = OnboardingMicrophoneWarningView(
             deviceName: device.name,
             onContinue: { [weak self] in
-                print(
-                    "[Onboarding] Duplex device warning acknowledged: "
-                        + "\(device.name) (\(device.id))"
-                )
-
+                model.setVolumeControlEnabled(true, for: device.id)
                 self?.showOnboardingDeviceDiscovery()
             }
         )
 
         window.contentView = NSHostingView(rootView: warningView)
     }
-    
+
     @MainActor
     func showDeviceConfigurationWindow() {
         // Reuse the existing window if it has already been created.
@@ -263,7 +253,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationWillTerminate(_: Notification) {
         // The SoundFridge GUI does not own the background Host.
         // Closing the configuration app must not interrupt audio service.
         print("SoundFridge configuration app terminating")
@@ -274,7 +264,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Closing its last window quits the GUI process. The background Host has
     /// its own lifecycle and continues running independently.
     func applicationShouldTerminateAfterLastWindowClosed(
-        _ sender: NSApplication
+        _: NSApplication
     ) -> Bool {
         true
     }
@@ -282,7 +272,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Poll a Process for exit up to timeout seconds.
     private func waitForProcessExit(_ process: Process, timeout: TimeInterval, logger: (String) -> Void) {
         let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
+        while process.isRunning, Date() < deadline {
             Thread.sleep(forTimeInterval: 0.05)
         }
         if process.isRunning {
@@ -356,7 +346,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 AudioObjectGetPropertyData(currentDeviceID, &nameAddress, 0, nil, &nameSize, ptr)
             }
             if nameStatus == noErr, let name = deviceName?.takeUnretainedValue() as String? {
-
                 // If currently on a SoundBridge proxy, switch back to physical device
                 if name.contains("SoundBridge") {
                     logger("[Cleanup] Currently on proxy device: \(name)")
@@ -375,7 +364,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         AudioObjectGetPropertyData(currentDeviceID, &uidAddress, 0, nil, &uidSize, ptr)
                     }
                     if uidStatus == noErr, let proxyUIDStr = deviceUID?.takeUnretainedValue() as String? {
-
                         // Extract physical device UID (remove "-soundbridge" suffix)
                         if let physicalUID = proxyUIDStr.components(separatedBy: "-soundbridge").first {
                             logger("[Cleanup] Looking for physical device with UID: \(physicalUID)")
@@ -565,7 +553,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var machine = [CChar](repeating: 0, count: size)
         sysctlbyname("hw.machine", &machine, &size, nil, 0)
         let arch = String(cString: machine)
-        
+
         // Map to SwiftPM architecture names
         if arch.contains("arm64") {
             return "arm64-apple-macosx"
@@ -574,7 +562,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return nil
     }
-    
+
     func loadLogoImage() -> NSImage? {
         let fileManager = FileManager.default
         var logoURL: URL?
@@ -583,7 +571,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // First try to find the resource bundle
         if let resourceBundleURL = Bundle.main.url(forResource: "SoundBridgeApp_SoundBridgeApp", withExtension: "bundle"),
            let resourceBundle = Bundle(url: resourceBundleURL),
-           let logoPath = resourceBundle.url(forResource: "icons/soundbridge-menu", withExtension: "svg") {
+           let logoPath = resourceBundle.url(forResource: "icons/soundbridge-menu", withExtension: "svg")
+        {
             print("Found menu icon via resource bundle API: \(logoPath.path)")
             logoURL = logoPath
         }
@@ -613,7 +602,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if logoURL == nil, let resourcePath = Bundle.main.resourcePath {
             let possiblePaths = [
                 "\(resourcePath)/Resources/icons/soundbridge-menu.svg",
-                "\(resourcePath)/icons/soundbridge-menu.svg"
+                "\(resourcePath)/icons/soundbridge-menu.svg",
             ]
 
             for path in possiblePaths {
@@ -667,7 +656,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("Successfully loaded and resized logo")
         return resizedImage
     }
-    
+
     func registerCustomFont() {
         let fileManager = FileManager.default
         var fontURL: URL?
@@ -675,7 +664,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // PRIORITY 1: Try using Bundle's resource API (works across bundle structures)
         if let resourceBundleURL = Bundle.main.url(forResource: "SoundBridgeApp_SoundBridgeApp", withExtension: "bundle"),
            let resourceBundle = Bundle(url: resourceBundleURL),
-           let fontPath = resourceBundle.url(forResource: "fonts/SignPainterHouseScript", withExtension: "ttf") {
+           let fontPath = resourceBundle.url(forResource: "fonts/SignPainterHouseScript", withExtension: "ttf")
+        {
             print("Found font via resource bundle API: \(fontPath.path)")
             fontURL = fontPath
         }
@@ -704,7 +694,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if fontURL == nil, let resourcePath = Bundle.main.resourcePath {
             let possiblePaths = [
                 "\(resourcePath)/Resources/fonts/SignPainterHouseScript.ttf",
-                "\(resourcePath)/fonts/SignPainterHouseScript.ttf"
+                "\(resourcePath)/fonts/SignPainterHouseScript.ttf",
             ]
 
             for path in possiblePaths {
@@ -751,7 +741,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Failed to register font: \(error.takeRetainedValue())")
         }
     }
-    
+
     func showAlert(_ title: String, _ message: String) {
         let alert = NSAlert()
         alert.messageText = title
@@ -760,10 +750,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
-
 }
 
-// Main entry point - check for command-line flags before launching app
+/// Main entry point - check for command-line flags before launching app
 extension AppDelegate {
     static func main() {
         // Launch the app
