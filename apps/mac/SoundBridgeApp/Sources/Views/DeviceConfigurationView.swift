@@ -204,8 +204,14 @@ struct DeviceConfigurationView: View {
         List(model.devices) { device in
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(device.name)
-                        .font(.body)
+                    HStack(spacing: 8) {
+                        Text(device.name)
+
+                        Text(device.isConnected ? "Connected" : "Not connected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.body)
 
                     Toggle(
                         "Give it volume control",

@@ -159,12 +159,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] in
             guard let self else { return }
 
-            // Temporary bridge until Device Discovery exists.
             self.onboardingModel?.continueToDeviceDiscovery()
-            self.showDeviceConfigurationWindow()
-            self.onboardingWindow?.close()
-            self.onboardingWindow = nil
+            self.showOnboardingDeviceDiscovery()
         }
+
+        window.contentViewController = NSHostingController(rootView: view)
+    }
+
+    @MainActor
+    func showOnboardingDeviceDiscovery() {
+        guard let window = onboardingWindow else {
+            return
+        }
+
+        let model = DeviceConfigurationModel()
+
+        let view = OnboardingDeviceDiscoveryView(
+            model: model,
+            onManage: { device in
+                // Enrollment is intentionally deferred until the duplex-device
+                // microphone explanation is implemented.
+                print(
+                    "[Onboarding] Manage requested for pending device: "
+                        + "\(device.name) (\(device.id))"
+                )
+            },
+            onContinue: { [weak self] in
+                guard let self else { return }
+
+                self.showDeviceConfigurationWindow()
+                self.onboardingWindow?.close()
+                self.onboardingWindow = nil
+            }
+        )
 
         window.contentViewController = NSHostingController(rootView: view)
     }
