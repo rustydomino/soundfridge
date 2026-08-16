@@ -187,6 +187,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             },
             onContinue: { [weak self] in
+                self?.onboardingModel?.completeOnboarding()
                 self?.showDeviceConfigurationWindow()
                 self?.onboardingWindow?.close()
             }
