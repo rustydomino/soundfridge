@@ -133,3 +133,4 @@ diagnostics/
 *.crash
 *.diag
 .env
+Config/Signing.local.xcconfig

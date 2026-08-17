@@ -37,6 +37,7 @@
 
 /* Begin PBXFileReference section */
 		27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = com.soundbridge.host.plist; path = apps/mac/SoundBridgeApp/Resources/com.soundbridge.host.plist; sourceTree = "<group>"; };
+		273B669730329DC700D164CF /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Signing.xcconfig; path = Config/Signing.xcconfig; sourceTree = "<group>"; };
 		27411BBE302F75CF00695E98 /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/OnboardingModel.swift; sourceTree = "<group>"; };
 		27411BC0302F75E600695E98 /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingWelcomeView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingWelcomeView.swift; sourceTree = "<group>"; };
 		27411BC4302F7CBE00695E98 /* OnboardingSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingSetupView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingSetupView.swift; sourceTree = "<group>"; };
@@ -79,6 +80,7 @@
 				27411BC4302F7CBE00695E98 /* OnboardingSetupView.swift */,
 				27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */,
 				27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */,
+				273B669730329DC700D164CF /* Signing.xcconfig */,
 				27411BC6302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift */,
 				27B4400E3029B45F0046D44E /* SoundFridge */,
 				27B4400D3029B45F0046D44E /* Products */,
@@ -363,6 +365,7 @@
 		};
 		27B440183029B4600046D44E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 273B669730329DC700D164CF /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -371,7 +374,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = C9KL3S62SF;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -398,6 +400,7 @@
 		};
 		27B440193029B4600046D44E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 273B669730329DC700D164CF /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -406,7 +409,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = C9KL3S62SF;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
