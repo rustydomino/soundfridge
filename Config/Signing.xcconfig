@@ -1,0 +1,6 @@
+// Shared SoundFridge signing configuration.
+//
+// Developer-specific signing identities belong in Signing.local.xcconfig,
+// which is intentionally not tracked by Git.
+
+#include? "Signing.local.xcconfig"

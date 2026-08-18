@@ -8,6 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		27242C81302EDA6000F17B2D /* com.soundbridge.host.plist in CopyFiles */ = {isa = PBXBuildFile; fileRef = 27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */; };
+		27411BBF302F75CF00695E98 /* OnboardingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27411BBE302F75CF00695E98 /* OnboardingModel.swift */; };
+		27411BC1302F75E600695E98 /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27411BC0302F75E600695E98 /* OnboardingWelcomeView.swift */; };
+		27411BC5302F7CBE00695E98 /* OnboardingSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27411BC4302F7CBE00695E98 /* OnboardingSetupView.swift */; };
+		27411BC7302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27411BC6302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift */; };
+		27CDFFE1303042E800DE0300 /* OnboardingMicrophoneWarningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27CDFFE0303042E800DE0300 /* OnboardingMicrophoneWarningView.swift */; };
 		27D1E050302D8FBC007A6593 /* BlacklistedDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D1E04F302D8FBC007A6593 /* BlacklistedDevicesView.swift */; };
 		27FAA40E3029B604000D7CFF /* DriverStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */; };
 		27FAA40F3029B604000D7CFF /* HostStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27FAA40D3029B604000D7CFF /* HostStatusModel.swift */; };
@@ -32,7 +37,13 @@
 
 /* Begin PBXFileReference section */
 		27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = com.soundbridge.host.plist; path = apps/mac/SoundBridgeApp/Resources/com.soundbridge.host.plist; sourceTree = "<group>"; };
+		273B669730329DC700D164CF /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Signing.xcconfig; path = Config/Signing.xcconfig; sourceTree = "<group>"; };
+		27411BBE302F75CF00695E98 /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/OnboardingModel.swift; sourceTree = "<group>"; };
+		27411BC0302F75E600695E98 /* OnboardingWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingWelcomeView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingWelcomeView.swift; sourceTree = "<group>"; };
+		27411BC4302F7CBE00695E98 /* OnboardingSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingSetupView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingSetupView.swift; sourceTree = "<group>"; };
+		27411BC6302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingDeviceDiscoveryView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingDeviceDiscoveryView.swift; sourceTree = "<group>"; };
 		27B4400C3029B45F0046D44E /* SoundFridge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundFridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		27CDFFE0303042E800DE0300 /* OnboardingMicrophoneWarningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingMicrophoneWarningView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/OnboardingMicrophoneWarningView.swift; sourceTree = "<group>"; };
 		27D1E04F302D8FBC007A6593 /* BlacklistedDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BlacklistedDevicesView.swift; path = apps/mac/SoundBridgeApp/Sources/Views/BlacklistedDevicesView.swift; sourceTree = "<group>"; };
 		27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceConfigurationModel.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DeviceConfigurationModel.swift; sourceTree = "<group>"; };
 		27FAA40B3029B604000D7CFF /* DeviceRegistryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeviceRegistryStore.swift; path = apps/mac/SoundBridgeApp/Sources/Models/DeviceRegistryStore.swift; sourceTree = "<group>"; };
@@ -64,11 +75,17 @@
 		27B440033029B45F0046D44E = {
 			isa = PBXGroup;
 			children = (
+				27411BBE302F75CF00695E98 /* OnboardingModel.swift */,
+				27411BC0302F75E600695E98 /* OnboardingWelcomeView.swift */,
+				27411BC4302F7CBE00695E98 /* OnboardingSetupView.swift */,
 				27242C80302EDA6000F17B2D /* com.soundbridge.host.plist */,
 				27FAA4163029B768000D7CFF /* SoundBridgeApp.swift */,
+				273B669730329DC700D164CF /* Signing.xcconfig */,
+				27411BC6302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift */,
 				27B4400E3029B45F0046D44E /* SoundFridge */,
 				27B4400D3029B45F0046D44E /* Products */,
 				27FAA40A3029B604000D7CFF /* DeviceConfigurationModel.swift */,
+				27CDFFE0303042E800DE0300 /* OnboardingMicrophoneWarningView.swift */,
 				27FAA40B3029B604000D7CFF /* DeviceRegistryStore.swift */,
 				27FAA40C3029B604000D7CFF /* DriverStatusModel.swift */,
 				27FAA40D3029B604000D7CFF /* HostStatusModel.swift */,
@@ -200,7 +217,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n\nHOST_SOURCE=\"${SRCROOT}/packages/host/.build/arm64-apple-macosx/release/SoundBridgeHost\"\nHOST_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SoundBridgeHost\"\n\nif [[ ! -x \"${HOST_SOURCE}\" ]]; then\n    echo \"error: SoundBridgeHost release binary was not found.\"\n    echo \"error: Expected: ${HOST_SOURCE}\"\n    echo \"error: Build it with:\"\n    echo \"error: swift build --package-path packages/host --configuration release\"\n    exit 1\nfi\n\n/bin/cp -p \"${HOST_SOURCE}\" \"${HOST_DEST}\"\n\necho \"Bundled SoundBridgeHost at:\"\necho \"${HOST_DEST}\"\n";
+			shellScript = "set -eu\n\nHOST_SOURCE=\"${SRCROOT}/packages/host/.build/arm64-apple-macosx/release/SoundBridgeHost\"\nHOST_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SoundBridgeHost\"\n\nif [[ ! -x \"${HOST_SOURCE}\" ]]; then\n    echo \"error: SoundBridgeHost release binary was not found.\"\n    echo \"error: Expected: ${HOST_SOURCE}\"\n    echo \"error: Build it with:\"\n    echo \"error: swift build --package-path packages/host --configuration release\"\n    exit 1\nfi\n\n/bin/cp -p \"${HOST_SOURCE}\" \"${HOST_DEST}\"\n\n/usr/bin/codesign \\\n    --force \\\n    --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \\\n    \"${HOST_DEST}\"\n\necho \"Bundled SoundBridgeHost at:\"\necho \"${HOST_DEST}\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -211,9 +228,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				27FAA40E3029B604000D7CFF /* DriverStatusModel.swift in Sources */,
+				27411BC7302F8DB400695E98 /* OnboardingDeviceDiscoveryView.swift in Sources */,
 				27FAA40F3029B604000D7CFF /* HostStatusModel.swift in Sources */,
 				27FAA4103029B604000D7CFF /* DeviceRegistryStore.swift in Sources */,
 				27FAA4153029B649000D7CFF /* DeviceConfigurationView.swift in Sources */,
+				27411BC1302F75E600695E98 /* OnboardingWelcomeView.swift in Sources */,
+				27411BC5302F7CBE00695E98 /* OnboardingSetupView.swift in Sources */,
+				27411BBF302F75CF00695E98 /* OnboardingModel.swift in Sources */,
+				27CDFFE1303042E800DE0300 /* OnboardingMicrophoneWarningView.swift in Sources */,
 				27FAA4173029B768000D7CFF /* SoundBridgeApp.swift in Sources */,
 				27FAA4113029B604000D7CFF /* DeviceConfigurationModel.swift in Sources */,
 				27D1E050302D8FBC007A6593 /* BlacklistedDevicesView.swift in Sources */,
@@ -343,15 +365,18 @@
 		};
 		27B440183029B4600046D44E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 273B669730329DC700D164CF /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -375,15 +400,18 @@
 		};
 		27B440193029B4600046D44E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 273B669730329DC700D164CF /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
